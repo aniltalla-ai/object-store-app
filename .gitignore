@@ -1,0 +1,24 @@
+node_modules/
+.env
+.env.*
+!.env.example
+npm-debug.log*
+logs/
+*.log
+coverage/
+.DS_Store
+Thumbs.db
+.tmp/
+tmp/
+tmp_storage_chunks/
+.vscode/
+.idea/
+*.local
+
+# Build / deployment artifacts
+.mta/
+*.mtar
+
+# OS / editor artifacts
+*.swp
+*.swo
