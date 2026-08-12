@@ -14,6 +14,8 @@ const configConfirmBtn = document.getElementById('configConfirmBtn');
 const configCancelBtn = document.getElementById('configCancelBtn');
 
 const listBtn = document.getElementById('listBtn');
+const homeBtn = document.getElementById('homeBtn');
+const backBtn = document.getElementById('backBtn');
 const uploadBtn = document.getElementById('uploadBtn');
 const downloadBtn = document.getElementById('downloadBtn');
 const deleteBtn = document.getElementById('deleteBtn');
@@ -264,9 +266,57 @@ const setAppState = () => {
 };
 
 const setCurrentPathDisplay = () => {
+  const pathDisplay = document.getElementById('selectedPathDisplay');
   const instanceLabel = configuredInstance ? `Instance: ${configuredInstance}` : 'Instance: None';
-  const pathLabel = currentPath ? ` / ${currentPath}` : '';
-  document.getElementById('selectedPathDisplay').textContent = `${instanceLabel}${pathLabel}`;
+  const segments = currentPath ? currentPath.split('/').filter(Boolean) : [];
+
+  const breadcrumbHtml = `
+    <span class="breadcrumb-group">
+      <span class="breadcrumb-root">${instanceLabel}</span>
+      ${segments.length ? segments.map((segment, index) => {
+        const isCurrent = index === segments.length - 1;
+        if (isCurrent) {
+          return `<span class="breadcrumb-current">/${segment}</span>`;
+        }
+        return `<button type="button" class="breadcrumb-link" data-segment-index="${index}">/${segment}</button>`;
+      }).join('') : ''}
+    </span>
+  `;
+
+  pathDisplay.innerHTML = breadcrumbHtml;
+  pathDisplay.querySelectorAll('.breadcrumb-link').forEach((button) => {
+    button.addEventListener('click', () => {
+      const segmentIndex = Number(button.dataset.segmentIndex);
+      const parentSegments = segments.slice(0, segmentIndex + 1);
+      currentPath = parentSegments.join('/');
+      pathInput.value = currentPath;
+      setCurrentPathDisplay();
+      listFiles();
+    });
+  });
+
+  backBtn.disabled = !configuredInstance || !currentPath;
+  homeBtn.disabled = !configuredInstance || !currentPath;
+};
+
+const goHome = () => {
+  if (!configuredInstance) return;
+  currentPath = '';
+  pathInput.value = '';
+  setCurrentPathDisplay();
+  listFiles();
+};
+
+const goBackOneLevel = () => {
+  if (!configuredInstance) return;
+  if (!currentPath) return;
+
+  const parentPath = currentPath.split('/').filter(Boolean);
+  parentPath.pop();
+  currentPath = parentPath.join('/');
+  pathInput.value = currentPath;
+  setCurrentPathDisplay();
+  listFiles();
 };
 
 const listFiles = async () => {
@@ -442,6 +492,8 @@ const performUpload = async () => {
 
 const init = () => {
   listBtn.addEventListener('click', listFiles);
+  homeBtn.addEventListener('click', goHome);
+  backBtn.addEventListener('click', goBackOneLevel);
   uploadBtn.addEventListener('click', uploadFile);
   downloadBtn.addEventListener('click', () => downloadFile(selectedFilePath));
   deleteBtn.addEventListener('click', () => deleteFile(selectedFilePath));

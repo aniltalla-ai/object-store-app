@@ -11,6 +11,7 @@ app.use(express.raw({ type: 'application/octet-stream', limit: '100mb' }));
 app.use(express.text({ type: 'text/plain', limit: '100mb' }));
 
 app.use(express.static(path.join(__dirname, 'app')));
+app.use('/swagger', express.static(path.join(__dirname, 'swagger')));
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'app', 'index.html'));
 });

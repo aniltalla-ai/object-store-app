@@ -3,7 +3,7 @@ const path = require('path');
 
 class LocalMockProvider {
   constructor() {
-    this.mockRoot = path.join(__dirname, '../../tmp_storage_chunks/mock_bucket');
+    this.mockRoot = path.join(__dirname, '../../tmp_storage_chunks');
   }
 
   async createPath(instanceId, defaultFolders) {

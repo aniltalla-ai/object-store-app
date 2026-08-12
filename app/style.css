@@ -116,6 +116,46 @@ button {
   transition: transform 0.15s ease, background 0.15s ease;
 }
 
+.secondary-btn {
+  background: #5c7fa6;
+}
+
+.breadcrumb-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.breadcrumb-root,
+.breadcrumb-link,
+.breadcrumb-current {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.breadcrumb-root {
+  color: #33475b;
+  background: #edf3ff;
+}
+
+.breadcrumb-link {
+  color: #0f4c81;
+  background: #edf3ff;
+  border: 1px solid #dfe9ff;
+  cursor: pointer;
+}
+
+.breadcrumb-current {
+  color: #0f4c81;
+  background: #dfe9ff;
+  border: 1px solid #ceddff;
+}
+
 button:hover,
 .header-right button:hover {
   transform: translateY(-1px);

@@ -1,7 +1,9 @@
 const passport = require('passport');
 
 const authMiddleware = (req, res, next) => {
-  if (process.env.MOCK_LOCAL_STORAGE === 'true' || process.env.NODE_ENV !== 'production') {
+  const useMockAuth = process.env.MOCK_LOCAL_STORAGE === 'true' || process.env.NODE_ENV === 'development';
+
+  if (useMockAuth) {
     const authHeader = req.headers['authorization'];
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'Unauthorized: Missing local Bearer token format.' });

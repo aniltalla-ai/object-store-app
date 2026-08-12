@@ -6,7 +6,10 @@ const LocalMockProvider = require('./providers/localMockProvider');
 
 class StorageAdapter {
   static async getClient(destinationName) {
-    if (process.env.NODE_ENV !== 'production' && process.env.MOCK_LOCAL_STORAGE === 'true') {
+    const isMockMode = process.env.MOCK_LOCAL_STORAGE === 'true';
+    const isDevelopment = process.env.NODE_ENV === 'development';
+
+    if (isDevelopment && isMockMode) {
       return new LocalMockProvider();
     }
 
