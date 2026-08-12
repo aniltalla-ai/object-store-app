@@ -7,8 +7,8 @@
   },
   "servers": [
     {
-      "url": "http://localhost:4004",
-      "description": "Local development server"
+      "url": "/",
+      "description": "Server"
     }
   ],
   "security": [
