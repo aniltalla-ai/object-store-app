@@ -17,8 +17,8 @@
   ],
   "attributes": [
     {
-      "name": "abap_instance",
-      "description": "ABAP storage instance identifier used to scope access",
+      "name": "object_store_instance",
+      "description": "Object store instance identifier used to scope access",
       "valueType": "string"
     }
   ],
@@ -32,7 +32,7 @@
         "$XSAPPNAME.execute"
       ],
       "attribute-references": [
-        "abap_instance"
+        "object_store_instance"
       ]
     }
   ]

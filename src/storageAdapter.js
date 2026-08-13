@@ -2,17 +2,9 @@ const { getDestination } = require('@sap-cloud-sdk/connectivity');
 const AwsProvider = require('./providers/awsProvider');
 const AzureProvider = require('./providers/azureProvider');
 const GcpProvider = require('./providers/gcpProvider');
-const LocalMockProvider = require('./providers/localMockProvider');
 
 class StorageAdapter {
   static async getClient(destinationName) {
-    const isMockMode = process.env.MOCK_LOCAL_STORAGE === 'true';
-    const isDevelopment = process.env.NODE_ENV === 'development';
-
-    if (isDevelopment && isMockMode) {
-      return new LocalMockProvider();
-    }
-
     const vcap = process.env.VCAP_SERVICES ? JSON.parse(process.env.VCAP_SERVICES) : {};
 
     if (vcap.objectstore && vcap.objectstore.length > 0) {

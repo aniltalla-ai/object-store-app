@@ -1,9 +1,13 @@
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
-class LocalMockProvider {
-  constructor() {
-    this.mockRoot = path.join(__dirname, '../../tmp_storage_chunks');
+class MockProvider {
+  constructor(rootDir) {
+    this.mockRoot = rootDir || path.join(os.tmpdir(), 'mock_object_store');
+    if (!fs.existsSync(this.mockRoot)) {
+      fs.mkdirSync(this.mockRoot, { recursive: true });
+    }
   }
 
   async createPath(instanceId, defaultFolders) {
@@ -13,14 +17,15 @@ class LocalMockProvider {
   }
 
   async list(prefixFilter, instanceId, subfolder) {
-    const targetDir = path.join(this.mockRoot, instanceId, subfolder || '');
+    const targetDir = path.join(this.mockRoot, instanceId || '', subfolder || '');
     if (!fs.existsSync(targetDir)) return [];
 
     return fs.readdirSync(targetDir).map((name) => {
       const fullPath = path.join(targetDir, name);
       const stat = fs.statSync(fullPath);
+      const relName = subfolder ? `${subfolder}/${name}` : name;
       return {
-        name: name.replace(/\\/g, '/'),
+        name: relName.replace(/\\/g, '/'),
         size: stat.isDirectory() ? null : stat.size,
         modified: stat.mtime,
         isFolder: stat.isDirectory()
@@ -66,8 +71,19 @@ class LocalMockProvider {
   async uploadStream(targetPath, fsReadStream, localFilePath) {
     const dstP = path.join(this.mockRoot, targetPath);
     fs.mkdirSync(path.dirname(dstP), { recursive: true });
-    fs.renameSync(localFilePath, dstP);
+    if (localFilePath && fs.existsSync(localFilePath)) {
+      fs.copyFileSync(localFilePath, dstP);
+    } else if (fsReadStream) {
+      const ws = fs.createWriteStream(dstP);
+      fsReadStream.pipe(ws);
+      await new Promise((resolve, reject) => {
+        ws.on('finish', resolve);
+        ws.on('error', reject);
+      });
+    } else {
+      fs.writeFileSync(dstP, Buffer.alloc(0));
+    }
   }
 }
 
-module.exports = LocalMockProvider;
+module.exports = MockProvider;

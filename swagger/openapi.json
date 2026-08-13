@@ -1,523 +1,210 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "Object Store App API",
-    "version": "1.1.0",
-    "description": "Storage API for object-store operations implemented by the local mock and provider-backed router."
+    "title": "Object Store Service APIs",
+    "description": "REST API service for object storage (AWS S3, Azure Blob, GCP Storage) with multi-instance tenant scoping",
+    "version": "1.0.0"
   },
   "servers": [
     {
       "url": "/",
-      "description": "Server"
+      "description": "Object Store Service Base Path"
     }
   ],
   "security": [
     {
-      "bearerAuth": []
+      "BearerAuth": []
     }
   ],
-  "components": {
-    "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "bearerFormat": "JWT",
-        "description": "Bearer token used by the local mock security layer."
-      }
-    },
-    "responses": {
-      "BadRequest": {
-        "description": "Malformed request payload or missing required parameter."
-      },
-      "Unauthorized": {
-        "description": "Missing or invalid authorization token."
-      },
-      "NotFound": {
-        "description": "Requested item or upload session was not found."
-      }
-    },
-    "schemas": {
-      "StorageItemResponseModel": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string",
-            "example": "Success"
-          },
-          "provisionedPath": {
-            "type": "string",
-            "example": "I-1/Inbox"
-          },
-          "name": {
-            "type": "string",
-            "example": "Inbox"
-          },
-          "location": {
-            "type": "string",
-            "example": "I-1/Inbox"
-          },
-          "isDirectory": {
-            "type": "boolean",
-            "example": true
-          },
-          "sizeInBytes": {
-            "type": "integer",
-            "example": 0
-          },
-          "storageType": {
-            "type": "string",
-            "example": "Local"
-          }
-        }
-      },
-      "StorageListResponseModel": {
-        "type": "object",
-        "properties": {
-          "bucket": {
-            "type": "string",
-            "example": "I-1"
-          },
-          "items": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "name": {
-                  "type": "string",
-                  "example": "Inbox/report.txt"
-                },
-                "sizeInBytes": {
-                  "type": "integer",
-                  "example": 1234
-                },
-                "location": {
-                  "type": "string",
-                  "example": "Inbox/report.txt"
-                },
-                "isDirectory": {
-                  "type": "boolean",
-                  "example": false
-                },
-                "storageType": {
-                  "type": "string",
-                  "example": "LocalMockProvider"
-                },
-                "creationDate": {
-                  "type": "string",
-                  "format": "date-time"
-                }
-              }
-            }
-          },
-          "files": {
-            "type": "array",
-            "items": {
-              "type": "object"
-            }
-          },
-          "recursive": {
-            "type": "boolean",
-            "example": true
-          }
-        }
-      },
-      "PendingUpload": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string",
-            "example": "Started"
-          },
-          "fileName": {
-            "type": "string",
-            "example": "orders.csv"
-          },
-          "path": {
-            "type": "string",
-            "example": "C:/tmp/upload-uuid"
-          }
-        }
-      },
-      "StorageLocalFileInfo": {
-        "type": "object",
-        "properties": {
-          "fileName": {
-            "type": "string",
-            "example": "demo.txt"
-          },
-          "path": {
-            "type": "string",
-            "example": "C:/tmp/upload-uuid"
-          },
-          "status": {
-            "type": "string",
-            "example": "Started"
-          }
-        }
-      },
-      "ChunkType": {
-        "type": "string",
-        "enum": [
-          "Line",
-          "Binary",
-          "None"
-        ]
-      }
-    }
-  },
   "paths": {
     "/Storage/{destinationName}/createPath": {
       "post": {
-        "summary": "Create a folder path under the requested destination.",
-        "operationId": "createPath",
+        "tags": ["Storage"],
+        "summary": "Create directory path in object store",
         "parameters": [
           {
             "name": "destinationName",
             "in": "path",
             "required": true,
-            "schema": {
-              "type": "string"
-            }
+            "schema": { "type": "string" },
+            "description": "Object store instance name (e.g. INST_01)"
           },
           {
             "name": "path",
             "in": "query",
             "required": true,
-            "schema": {
-              "type": "string"
-            }
+            "schema": { "type": "string" },
+            "description": "Folder path to create"
           }
         ],
         "responses": {
-          "201": {
-            "description": "Created",
+          "200": {
+            "description": "Folder created successfully",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StorageItemResponseModel"
-                }
+                "schema": { "$ref": "#/components/schemas/StorageItemResponseModel" }
               }
             }
           },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          }
+          "400": { "description": "Missing parameters" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Security instance mismatch" }
         }
       }
     },
     "/Storage/{destinationName}/list": {
       "get": {
-        "summary": "List files and folders for the destination and optional subfolder.",
-        "operationId": "listFiles",
+        "tags": ["Storage"],
+        "summary": "List files and folders in object store destination",
         "parameters": [
           {
             "name": "destinationName",
             "in": "path",
             "required": true,
-            "schema": {
-              "type": "string"
-            }
+            "schema": { "type": "string" }
           },
           {
             "name": "StartIn",
             "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
+            "schema": { "type": "string" },
+            "description": "Subfolder prefix to search inside"
           },
           {
             "name": "Recursive",
             "in": "query",
-            "required": false,
-            "schema": {
-              "type": "boolean"
-            }
+            "schema": { "type": "boolean" },
+            "description": "Recursive listing flag"
           }
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "File listing",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StorageListResponseModel"
-                }
+                "schema": { "$ref": "#/components/schemas/StorageListResponseModel" }
               }
             }
           },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          }
-        }
-      }
-    },
-    "/Storage/{destinationName}/getChunk": {
-      "get": {
-        "summary": "Read a chunk or line range from a file under the destination.",
-        "operationId": "getChunk",
-        "parameters": [
-          {
-            "name": "destinationName",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "location",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "chunkType",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "$ref": "#/components/schemas/ChunkType"
-            }
-          },
-          {
-            "name": "chunkSize",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int64",
-              "default": 0
-            }
-          },
-          {
-            "name": "chunkPart",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int64",
-              "default": 0
-            }
-          },
-          {
-            "name": "startLine",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int64",
-              "default": 0
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/octet-stream": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          }
-        }
-      }
-    },
-    "/Storage/{destinationName}/copy": {
-      "post": {
-        "summary": "Create a copy of a file at sourcePath to destinationPath.",
-        "operationId": "copyFile",
-        "parameters": [
-          {
-            "name": "destinationName",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "sourcePath",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "destinationPath",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          }
-        }
-      }
-    },
-    "/Storage/{destinationName}/move": {
-      "post": {
-        "summary": "Move a file from sourcePath to destinationPath.",
-        "operationId": "moveFile",
-        "parameters": [
-          {
-            "name": "destinationName",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "sourcePath",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "destinationPath",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          }
+          "401": { "description": "Unauthorized" }
         }
       }
     },
     "/Storage/{destinationName}/get": {
       "get": {
-        "summary": "Download a file from the destination.",
-        "operationId": "getFile",
+        "tags": ["Storage"],
+        "summary": "Download file from destination",
         "parameters": [
           {
             "name": "destinationName",
             "in": "path",
             "required": true,
-            "schema": {
-              "type": "string"
-            }
+            "schema": { "type": "string" }
           },
           {
             "name": "location",
             "in": "query",
             "required": true,
-            "schema": {
-              "type": "string"
-            }
+            "schema": { "type": "string" },
+            "description": "Relative file path"
           }
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Binary file content stream",
             "content": {
               "application/octet-stream": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
+                "schema": { "type": "string", "format": "binary" }
               }
             }
           },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
+          "400": { "description": "Missing location" },
+          "404": { "description": "File not found" }
+        }
+      }
+    },
+    "/Storage/{destinationName}/getChunk": {
+      "get": {
+        "tags": ["Storage"],
+        "summary": "Get file chunk from destination",
+        "parameters": [
+          {
+            "name": "destinationName",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
           },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
+          {
+            "name": "location",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "chunkType",
+            "in": "query",
+            "schema": { "$ref": "#/components/schemas/ChunkType" }
+          },
+          {
+            "name": "chunkSize",
+            "in": "query",
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "chunkPart",
+            "in": "query",
+            "schema": { "type": "integer", "format": "int64" }
+          },
+          {
+            "name": "startLine",
+            "in": "query",
+            "schema": { "type": "integer", "format": "int64" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Binary chunk content",
+            "content": {
+              "application/octet-stream": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
           }
         }
       }
     },
     "/Storage/{destinationName}/post": {
       "post": {
-        "summary": "Upload a file to a destination path.",
-        "operationId": "postFile",
+        "tags": ["Storage"],
+        "summary": "Upload file synchronously to destination",
         "parameters": [
           {
             "name": "destinationName",
             "in": "path",
             "required": true,
-            "schema": {
-              "type": "string"
-            }
+            "schema": { "type": "string" }
           },
           {
             "name": "location",
             "in": "query",
             "required": true,
-            "schema": {
-              "type": "string"
-            }
+            "schema": { "type": "string" }
           }
         ],
         "requestBody": {
+          "description": "File data / content",
           "required": true,
           "content": {
+            "application/octet-stream": {
+              "schema": { "type": "string", "format": "binary" }
+            },
+            "text/plain": {
+              "schema": { "type": "string" }
+            },
             "multipart/form-data": {
               "schema": {
                 "type": "object",
                 "properties": {
-                  "file": {
-                    "type": "string",
-                    "format": "binary"
-                  }
+                  "file": { "type": "string", "format": "binary" }
                 }
               }
             }
@@ -525,501 +212,490 @@
         },
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Upload success",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object"
-                }
+                "schema": { "$ref": "#/components/schemas/StorageItemResponseModel" }
               }
             }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
           }
         }
       }
     },
     "/Storage/{destinationName}/postasync": {
       "post": {
-        "summary": "Upload a file asynchronously to a destination path.",
-        "operationId": "postFileAsync",
+        "tags": ["Storage"],
+        "summary": "Upload file asynchronously to destination",
         "parameters": [
           {
             "name": "destinationName",
             "in": "path",
             "required": true,
-            "schema": {
-              "type": "string"
-            }
+            "schema": { "type": "string" }
           },
           {
             "name": "location",
             "in": "query",
             "required": true,
-            "schema": {
-              "type": "string"
-            }
+            "schema": { "type": "string" }
           }
         ],
         "requestBody": {
+          "description": "File content",
           "required": true,
           "content": {
-            "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "file": {
-                    "type": "string",
-                    "format": "binary"
-                  }
-                }
-              }
+            "application/octet-stream": {
+              "schema": { "type": "string", "format": "binary" }
+            },
+            "text/plain": {
+              "schema": { "type": "string" }
             }
           }
         },
         "responses": {
-          "202": {
-            "description": "Accepted",
+          "202": { "description": "Accepted" }
+        }
+      }
+    },
+    "/Storage/{destinationName}/copy": {
+      "post": {
+        "tags": ["Storage"],
+        "summary": "Copy file from source path to destination path",
+        "parameters": [
+          {
+            "name": "destinationName",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "sourcePath",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "destinationPath",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File copied",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object"
-                }
+                "schema": { "$ref": "#/components/schemas/StorageItemResponseModel" }
               }
             }
+          }
+        }
+      }
+    },
+    "/Storage/{destinationName}/move": {
+      "post": {
+        "tags": ["Storage"],
+        "summary": "Move file from source path to destination path",
+        "parameters": [
+          {
+            "name": "destinationName",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
           },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
+          {
+            "name": "sourcePath",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
           },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
+          {
+            "name": "destinationPath",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File moved",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StorageItemResponseModel" }
+              }
+            }
           }
         }
       }
     },
     "/Storage/{destinationName}/delete": {
       "delete": {
-        "summary": "Delete a file from the destination.",
-        "operationId": "deleteFile",
+        "tags": ["Storage"],
+        "summary": "Delete file from destination",
         "parameters": [
           {
             "name": "destinationName",
             "in": "path",
             "required": true,
-            "schema": {
-              "type": "string"
-            }
+            "schema": { "type": "string" }
           },
           {
             "name": "location",
             "in": "query",
             "required": true,
-            "schema": {
-              "type": "string"
-            }
+            "schema": { "type": "string" }
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          }
+          "200": { "description": "File deleted" }
         }
       }
     },
     "/Storage/{destinationName}/setStorage": {
       "post": {
-        "summary": "Set storage metadata on a file path.",
-        "operationId": "setStorage",
+        "tags": ["Storage"],
+        "summary": "Change storage class of a file",
         "parameters": [
           {
             "name": "destinationName",
             "in": "path",
             "required": true,
-            "schema": {
-              "type": "string"
-            }
+            "schema": { "type": "string" }
           },
           {
             "name": "location",
             "in": "query",
             "required": true,
-            "schema": {
-              "type": "string"
-            }
+            "schema": { "type": "string" }
           },
           {
             "name": "storage",
             "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "example": "Archive"
-            }
+            "schema": { "$ref": "#/components/schemas/StorageTypes" }
           }
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Storage class updated",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object"
-                }
+                "schema": { "$ref": "#/components/schemas/StorageItemResponseModel" }
               }
             }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
           }
         }
       }
     },
     "/Storage/listWritable": {
       "get": {
-        "summary": "List pending writable upload files.",
-        "operationId": "listWritable",
+        "tags": ["Storage"],
+        "summary": "List pending files available for writing/appending",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "List of writable files",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/StorageLocalFileInfo"
-                  }
+                  "items": { "$ref": "#/components/schemas/StorageLocalFileInfo" }
                 }
               }
             }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
           }
         }
       }
     },
     "/Storage/getWritable/{fileName}": {
       "get": {
-        "summary": "Get all or a portion of a writable file by fileName.",
-        "operationId": "getWritable",
+        "tags": ["Storage"],
+        "summary": "Get all or a portion of a writable file",
         "parameters": [
           {
             "name": "fileName",
             "in": "path",
             "required": true,
-            "schema": {
-              "type": "string"
-            }
+            "schema": { "type": "string" }
           },
           {
             "name": "chunkType",
             "in": "query",
-            "required": false,
-            "schema": {
-              "$ref": "#/components/schemas/ChunkType"
-            }
+            "schema": { "$ref": "#/components/schemas/ChunkType" }
           },
           {
             "name": "startLine",
             "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int64",
-              "default": 0
-            }
+            "schema": { "type": "integer", "format": "int64", "default": 0 }
           },
           {
             "name": "chunkSize",
             "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int64",
-              "default": 0
-            }
+            "schema": { "type": "integer", "format": "int64", "default": 0 }
           },
           {
             "name": "chunkPart",
             "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int64",
-              "default": 0
-            }
+            "schema": { "type": "integer", "format": "int64", "default": 0 }
           }
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Writable file chunk content",
             "content": {
               "application/octet-stream": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
+                "schema": { "type": "string", "format": "binary" }
               }
             }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
           }
         }
       }
     },
     "/Storage/writeStart/{fileName}": {
       "post": {
-        "summary": "Create a writable upload session and save the request body as the file contents.",
-        "operationId": "writeStart",
+        "tags": ["Storage"],
+        "summary": "Create a file session that can be appended to",
         "parameters": [
           {
             "name": "fileName",
             "in": "path",
             "required": true,
-            "schema": {
-              "type": "string"
-            }
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "encoding",
+            "in": "query",
+            "schema": { "$ref": "#/components/schemas/SupportedEncodings" }
+          },
+          {
+            "name": "linebreak",
+            "in": "query",
+            "schema": { "$ref": "#/components/schemas/LinebreakTypes" }
           }
         ],
+        "requestBody": {
+          "description": "Initial chunk data / file content",
+          "required": false,
+          "content": {
+            "application/octet-stream": {
+              "schema": { "type": "string", "format": "binary" }
+            },
+            "text/plain": {
+              "schema": { "type": "string" }
+            }
+          }
+        },
         "responses": {
-          "201": {
-            "description": "Created",
+          "200": {
+            "description": "Upload session initialized",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "uploadId": {
-                      "type": "string",
-                      "format": "uuid"
-                    },
-                    "status": {
-                      "type": "string",
-                      "example": "Started"
-                    }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/StorageLocalFileInfo" }
               }
             }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
           }
         }
       }
     },
     "/Storage/writeChunk/{fileName}": {
       "post": {
-        "summary": "Append a chunk to an existing writable file.",
-        "operationId": "writeChunk",
+        "tags": ["Storage"],
+        "summary": "Add chunk to existing writable file session",
         "parameters": [
           {
             "name": "fileName",
             "in": "path",
             "required": true,
-            "schema": {
-              "type": "string"
-            }
+            "schema": { "type": "string" }
           }
         ],
+        "requestBody": {
+          "description": "Chunk data / file content to append",
+          "required": false,
+          "content": {
+            "application/octet-stream": {
+              "schema": { "type": "string", "format": "binary" }
+            },
+            "text/plain": {
+              "schema": { "type": "string" }
+            }
+          }
+        },
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Chunk appended",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "example": "Appended"
-                    }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/StorageLocalFileInfo" }
               }
             }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
           }
         }
       }
     },
     "/Storage/writeComplete/{fileName}": {
       "post": {
-        "summary": "Complete the writable upload and move the temporary file to its destination.",
-        "operationId": "writeComplete",
+        "tags": ["Storage"],
+        "summary": "Close writable file session and move to destination",
         "parameters": [
           {
             "name": "fileName",
             "in": "path",
             "required": true,
-            "schema": {
-              "type": "string"
-            }
+            "schema": { "type": "string" }
           },
           {
             "name": "destination",
             "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
+            "schema": { "type": "string" }
           },
           {
             "name": "storagePath",
             "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
+            "schema": { "type": "string" }
           }
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "File upload completed and stored",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "example": "Success"
-                    },
-                    "remotePath": {
-                      "type": "string",
-                      "example": "I-1/Inbox/orders.csv"
-                    }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/StorageItemResponseModel" }
               }
             }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
           }
         }
       }
     },
     "/Storage/writeCancel/{fileName}": {
       "post": {
-        "summary": "Cancel a writable upload and remove the temporary file.",
-        "operationId": "writeCancel",
+        "tags": ["Storage"],
+        "summary": "Cancel writing session and remove temporary chunks",
         "parameters": [
           {
             "name": "fileName",
             "in": "path",
             "required": true,
-            "schema": {
-              "type": "string"
-            }
+            "schema": { "type": "string" }
           }
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Session cancelled",
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "example": "Cancelled"
-                    }
-                  }
-                }
+                "schema": { "$ref": "#/components/schemas/StorageLocalFileInfo" }
               }
             }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
           }
         }
       }
     },
     "/Storage/uploadStatus/{uploadId}": {
       "get": {
-        "summary": "Get the status of a pending upload session.",
-        "operationId": "uploadStatus",
+        "tags": ["Storage"],
+        "summary": "View pending upload status",
         "parameters": [
           {
             "name": "uploadId",
             "in": "path",
             "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
+            "schema": { "type": "string", "format": "uuid" }
           }
         ],
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Upload status info",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PendingUpload"
-                }
+                "schema": { "$ref": "#/components/schemas/PendingUpload" }
               }
             }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
           }
         }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "StorageItemResponseModel": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "nullable": true },
+          "sizeInBytes": { "type": "integer", "format": "int64" },
+          "location": { "type": "string", "nullable": true },
+          "isDirectory": { "type": "boolean" },
+          "storageType": { "type": "string", "nullable": true },
+          "lineCount": { "type": "integer", "format": "int32", "nullable": true },
+          "creationDate": { "type": "string", "format": "date-time", "nullable": true }
+        },
+        "additionalProperties": false
+      },
+      "StorageListResponseModel": {
+        "type": "object",
+        "properties": {
+          "bucket": { "type": "string", "nullable": true },
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/StorageItemResponseModel" },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "StorageLocalFileInfo": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "nullable": true },
+          "sizeInBytes": { "type": "integer", "format": "int64" },
+          "lineCount": { "type": "integer", "format": "int64", "nullable": true },
+          "creationDate": { "type": "string", "format": "date-time" },
+          "updateDate": { "type": "string", "format": "date-time", "nullable": true }
+        },
+        "additionalProperties": false
+      },
+      "PendingUpload": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "fileName": { "type": "string", "nullable": true },
+          "location": { "type": "string", "nullable": true },
+          "destLocation": { "type": "string", "nullable": true },
+          "tenant": { "type": "string", "nullable": true },
+          "destinationId": { "type": "string", "format": "uuid" },
+          "status": { "$ref": "#/components/schemas/UploadStatus" },
+          "statusMessage": { "type": "string", "nullable": true },
+          "statusDate": { "type": "string", "format": "date-time" },
+          "insertDate": { "type": "string", "format": "date-time" },
+          "deleted": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      },
+      "UploadStatus": {
+        "type": "string",
+        "enum": ["Pending", "InProgress", "Complete", "Failed"]
+      },
+      "StorageTypes": {
+        "type": "string",
+        "enum": ["Standard", "Nearline", "Coldline", "Archive"]
+      },
+      "ChunkType": {
+        "type": "string",
+        "enum": ["Line", "Binary", "None"]
+      },
+      "SupportedEncodings": {
+        "type": "string",
+        "enum": ["Default", "UTF8BOM", "UTF8", "UTF16BE", "UTF16LE"]
+      },
+      "LinebreakTypes": {
+        "type": "string",
+        "enum": ["Unknown", "WindowsStyle", "Windows", "LinuxStyle", "Linux"]
       }
     }
   }

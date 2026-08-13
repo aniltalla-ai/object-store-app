@@ -14,7 +14,9 @@ coverage/
 .tmp/
 tmp/
 tmp_storage_chunks/
+test/
 .DS_Store
 Thumbs.db
 .mta/
 *.mtar
+app/

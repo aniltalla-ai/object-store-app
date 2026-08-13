@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node --test"
+    "test": "node --test test/*.test.js",
+    "test:server": "node test/testServer.js"
   },
   "engines": {
     "node": ">=18"
@@ -16,6 +17,8 @@
     "@azure/storage-blob": "^12.23.0",
     "@google-cloud/storage": "^7.11.0",
     "@sap-cloud-sdk/connectivity": "^4.8.0",
+    "@sap/xsenv": "^6.2.2",
+    "@sap/xssec": "^4.15.0",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "passport": "^0.7.0",

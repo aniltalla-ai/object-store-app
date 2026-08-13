@@ -17,8 +17,8 @@ const xsSecurity = {
   ],
   attributes: [
     {
-      name: 'abap_instance',
-      description: 'ABAP storage instance identifier used to scope access',
+      name: 'object_store_instance',
+      description: 'Object store instance identifier used to scope access',
       valueType: 'string'
     }
   ],
@@ -27,7 +27,7 @@ const xsSecurity = {
       name: 'ObjectStoreUser',
       description: 'User role for the object store application',
       'scope-references': ['$XSAPPNAME.read', '$XSAPPNAME.write', '$XSAPPNAME.execute'],
-      'attribute-references': ['abap_instance']
+      'attribute-references': ['object_store_instance']
     }
   ]
 };
