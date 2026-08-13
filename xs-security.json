@@ -18,7 +18,7 @@
   "attributes": [
     {
       "name": "object_store_instance",
-      "description": "Object Store instance identifier used to scope access",
+      "description": "Object Store Instance Identifier used to scope access",
       "valueType": "string"
     }
   ],
