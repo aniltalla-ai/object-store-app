@@ -1,42 +1,482 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark" data-theme-preset="slate">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Object Store App - Documentation</title>
-  <link rel="stylesheet" href="/swagger/github-markdown.min.css">
-  <script src="/swagger/marked.min.js"></script>
-  <style>
-    body {
-      box-sizing: border-box;
-      min-width: 200px;
-      max-width: 980px;
-      margin: 0 auto;
-      padding: 45px;
-      background-color: #0d1117;
-      color: #c9d1d9;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
-    @media (max-width: 767px) {
-      body { padding: 15px; }
-    }
-    .markdown-body {
-      background-color: #0d1117;
-      color: #c9d1d9;
-    }
-  </style>
-</head>
-<body>
-  <article id="content" class="markdown-body">Loading Documentation...</article>
+  <title>Object Store App - Documentation & API Explorer</title>
+
+  <!-- Synchronous Blocking Theme Script to Prevent FOUC Flash -->
   <script>
-    fetch('/README.md')
-      .then(res => res.text())
-      .then(text => {
-        document.getElementById('content').innerHTML = marked.parse(text);
-      })
-      .catch(() => {
-        document.getElementById('content').innerHTML = '<p>Documentation unavailable.</p>';
+    (function() {
+      try {
+        var m = localStorage.getItem('themeMode') || 'dark';
+        var p = localStorage.getItem('themePreset') || 'slate';
+        document.documentElement.setAttribute('data-theme', m);
+        document.documentElement.setAttribute('data-theme-preset', p);
+      } catch (e) {}
+    })();
+  </script>
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="/swagger/github-markdown.min.css">
+  <link rel="stylesheet" href="/swagger/swagger-ui.css">
+  <link rel="stylesheet" href="/swagger/themes.css">
+  <link rel="stylesheet" href="/swagger/docs.css">
+  <link rel="stylesheet" href="/swagger/swagger-theme.css">
+
+  <!-- Core Scripts -->
+  <script src="/swagger/marked.min.js"></script>
+  <script src="/swagger/swagger-ui-bundle.js"></script>
+  <script src="/swagger/swagger-ui-standalone-preset.js"></script>
+</head>
+
+<body>
+  <!-- Header Navbar -->
+  <header class="top-header">
+    <div class="brand-container">
+      <div class="brand-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path
+            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+          </path>
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+          <line x1="12" y1="22.08" x2="12" y2="12"></line>
+        </svg>
+      </div>
+      <div class="brand-title">
+        Object Store App
+        <span class="brand-tag">v1.0 Docs & API</span>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <!-- Navigation Tab Switcher -->
+      <div class="nav-tab-group">
+        <button id="tabDocsBtn" class="nav-tab-btn active" onclick="switchTab('docs')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+          </svg>
+          README Docs
+        </button>
+        <button id="tabSwaggerBtn" class="nav-tab-btn" onclick="switchTab('swagger')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+          API Explorer (Swagger)
+        </button>
+      </div>
+
+      <div class="live-status">
+        <span class="pulse-dot"></span>
+        API Active
+      </div>
+
+      <!-- Theme Preset Selector -->
+      <select id="themePresetSelect" class="theme-select" title="Switch Theme Preset">
+        <option value="slate">⚡ Slate Theme</option>
+        <option value="cyberpunk">🌃 Cyberpunk Theme</option>
+        <option value="emerald">🌿 Emerald Theme</option>
+        <option value="sunset">🌅 Sunset Theme</option>
+      </select>
+
+      <!-- Light / Dark Toggle -->
+      <button id="themeToggle" class="theme-toggle-btn" title="Toggle Light/Dark Theme">
+        <svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- TAB VIEW 1: README Documentation View -->
+  <div id="docsView" class="tab-view active">
+    <div class="app-container">
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <span>Table of Contents</span>
+        </div>
+        <input type="text" id="tocSearch" class="toc-search" placeholder="Filter sections...">
+        <ul id="tocList" class="toc-list">
+          <li class="toc-item"><span class="toc-link" style="opacity:0.5;">Loading Outline...</span></li>
+        </ul>
+      </aside>
+
+      <main class="main-panel">
+        <article class="doc-card card-container">
+          <div id="readingTime" class="reading-time">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            Calculating reading time...
+          </div>
+          <div id="markdown-content" class="markdown-body">
+            <div style="text-align: center; padding: 4rem 0;">
+              <div style="display:inline-block; width: 36px; height: 36px; border: 3px solid var(--border-color); border-top-color: var(--accent-primary); border-radius: 50%; animation: spin 1s infinite linear;"></div>
+              <p style="margin-top: 1rem; color: var(--text-muted);">Fetching documentation...</p>
+            </div>
+          </div>
+        </article>
+      </main>
+    </div>
+  </div>
+
+  <!-- TAB VIEW 2: Swagger UI Explorer View -->
+  <div id="swaggerView" class="tab-view">
+    <div class="swagger-card-wrapper">
+      <div class="swagger-card card-container">
+        <div id="swagger-ui"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scroll to Top Button -->
+  <button id="backToTop" class="back-to-top" title="Back to top">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+      stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="18 15 12 9 6 15"></polyline>
+    </svg>
+  </button>
+
+  <!-- Interactive Logic -->
+  <script>
+    // Theme Mode & Preset Controller
+    const themePresetSelect = document.getElementById('themePresetSelect');
+    const themeToggleBtn = document.getElementById('themeToggle');
+    const sunIcon = themeToggleBtn.querySelector('.sun-icon');
+    const moonIcon = themeToggleBtn.querySelector('.moon-icon');
+
+    const savedThemeMode = localStorage.getItem('themeMode') || 'dark';
+    const savedThemePreset = localStorage.getItem('themePreset') || 'slate';
+
+    setThemeMode(savedThemeMode);
+    setThemePreset(savedThemePreset);
+
+    themeToggleBtn.addEventListener('click', () => {
+      const currentMode = document.documentElement.getAttribute('data-theme');
+      const newMode = currentMode === 'dark' ? 'light' : 'dark';
+      setThemeMode(newMode);
+    });
+
+    if (themePresetSelect) {
+      themePresetSelect.addEventListener('change', (e) => {
+        setThemePreset(e.target.value);
       });
+    }
+
+    function setThemeMode(mode) {
+      document.documentElement.setAttribute('data-theme', mode);
+      localStorage.setItem('themeMode', mode);
+      if (mode === 'dark') {
+        sunIcon.style.display = 'none';
+        moonIcon.style.display = 'block';
+      } else {
+        sunIcon.style.display = 'block';
+        moonIcon.style.display = 'none';
+      }
+    }
+
+    function setThemePreset(preset) {
+      document.documentElement.setAttribute('data-theme-preset', preset);
+      localStorage.setItem('themePreset', preset);
+      if (themePresetSelect) {
+        themePresetSelect.value = preset;
+      }
+    }
+
+    // Single-Page Smooth Tab Switcher
+    let swaggerInitialized = false;
+
+    function switchTab(tabName) {
+      const docsView = document.getElementById('docsView');
+      const swaggerView = document.getElementById('swaggerView');
+      const tabDocsBtn = document.getElementById('tabDocsBtn');
+      const tabSwaggerBtn = document.getElementById('tabSwaggerBtn');
+
+      if (tabName === 'swagger') {
+        docsView.classList.remove('active');
+        swaggerView.classList.add('active');
+        tabDocsBtn.classList.remove('active');
+        tabSwaggerBtn.classList.add('active');
+        if (window.location.hash !== '#swagger') {
+          history.replaceState(null, null, '#swagger');
+        }
+        if (!swaggerInitialized) {
+          initSwaggerUI();
+        }
+      } else {
+        swaggerView.classList.remove('active');
+        docsView.classList.add('active');
+        tabSwaggerBtn.classList.remove('active');
+        tabDocsBtn.classList.add('active');
+        if (window.location.hash !== '#docs') {
+          history.replaceState(null, null, '#docs');
+        }
+      }
+    }
+
+    // Initialize Swagger UI Lazy
+    function initSwaggerUI() {
+      if (swaggerInitialized) return;
+      swaggerInitialized = true;
+      window.ui = SwaggerUIBundle({
+        url: '/swagger/openapi.json',
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIStandalonePreset
+        ],
+        plugins: [
+          SwaggerUIBundle.plugins.DownloadUrl
+        ],
+        layout: "StandaloneLayout"
+      });
+    }
+
+    // Check Initial URL Hash or Path
+    window.addEventListener('DOMContentLoaded', () => {
+      const isSwaggerRoute = window.location.pathname.startsWith('/swagger') || window.location.hash === '#swagger';
+      if (isSwaggerRoute) {
+        switchTab('swagger');
+      } else {
+        switchTab('docs');
+      }
+      fetchAndRenderMarkdown();
+    });
+
+    window.addEventListener('hashchange', () => {
+      if (window.location.hash === '#swagger') {
+        switchTab('swagger');
+      } else if (window.location.hash === '#docs') {
+        switchTab('docs');
+      }
+    });
+
+    // Scroll to Top
+    const backToTopBtn = document.getElementById('backToTop');
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 400) {
+        backToTopBtn.classList.add('visible');
+      } else {
+        backToTopBtn.classList.remove('visible');
+      }
+    });
+
+    backToTopBtn.addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    // Markdown Parser & UI Enhancer
+    async function fetchAndRenderMarkdown() {
+      try {
+        const response = await fetch('/README.md');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const markdownText = await response.text();
+
+        // Calculate Reading Time
+        const words = markdownText.trim().split(/\s+/).length;
+        const minutes = Math.max(1, Math.ceil(words / 200));
+        document.getElementById('readingTime').innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          Estimated reading time: ${minutes} min read (${words.toLocaleString()} words)
+        `;
+
+        // Render Markdown
+        const contentContainer = document.getElementById('markdown-content');
+        contentContainer.innerHTML = marked.parse(markdownText);
+
+        enhanceMarkdownUI(contentContainer);
+        generateTOC(contentContainer);
+      } catch (err) {
+        document.getElementById('markdown-content').innerHTML = `
+          <div style="padding: 2rem; background: rgba(244,63,94,0.1); border: 1px solid rgba(244,63,94,0.3); border-radius: 12px; color: var(--accent-rose);">
+            <h3>Failed to load documentation</h3>
+            <p>${err.message}</p>
+          </div>
+        `;
+      }
+    }
+
+    function enhanceMarkdownUI(container) {
+      // 1. Format Code Blocks with Header & Copy Button
+      const preBlocks = container.querySelectorAll('pre');
+      preBlocks.forEach((pre) => {
+        const code = pre.querySelector('code');
+        const langClass = code ? Array.from(code.classList).find(c => c.startsWith('language-')) : '';
+        const lang = langClass ? langClass.replace('language-', '') : 'code';
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'code-wrapper';
+
+        const header = document.createElement('div');
+        header.className = 'code-header';
+        header.innerHTML = `
+          <span class="code-lang">${lang}</span>
+          <button class="copy-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            Copy
+          </button>
+        `;
+
+        const copyBtn = header.querySelector('.copy-btn');
+        copyBtn.addEventListener('click', () => {
+          const textToCopy = code ? code.innerText : pre.innerText;
+          navigator.clipboard.writeText(textToCopy).then(() => {
+            copyBtn.innerHTML = `
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              Copied!
+            `;
+            setTimeout(() => {
+              copyBtn.innerHTML = `
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                Copy
+              `;
+            }, 2000);
+          });
+        });
+
+        pre.parentNode.insertBefore(wrapper, pre);
+        wrapper.appendChild(header);
+        wrapper.appendChild(pre);
+      });
+
+      // 2. Wrap Tables for Responsiveness
+      const tables = container.querySelectorAll('table');
+      tables.forEach((table) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'table-wrapper';
+        table.parentNode.insertBefore(wrapper, table);
+        wrapper.appendChild(table);
+      });
+
+      // 3. Format HTTP API Endpoints with Standard Swagger Colors
+      const inlineCodes = container.querySelectorAll('code');
+      const httpVerbs = ['GET', 'POST', 'PUT', 'DELETE'];
+
+      inlineCodes.forEach((codeNode) => {
+        if (codeNode.closest('pre')) return;
+        const text = codeNode.textContent.trim();
+        const parts = text.split(/\s+/);
+
+        if (parts.length >= 2 && httpVerbs.includes(parts[0].toUpperCase())) {
+          const verb = parts[0].toUpperCase();
+          const path = parts.slice(1).join(' ');
+
+          const apiWrapper = document.createElement('span');
+          apiWrapper.className = 'api-endpoint';
+          apiWrapper.innerHTML = `
+            <span class="http-badge ${verb.toLowerCase()}">${verb}</span>
+            <code class="api-path">${path}</code>
+          `;
+
+          if (codeNode.parentNode) {
+            codeNode.parentNode.replaceChild(apiWrapper, codeNode);
+          }
+        }
+      });
+    }
+
+    function generateTOC(container) {
+      const headings = container.querySelectorAll('h1, h2, h3');
+      const tocList = document.getElementById('tocList');
+      tocList.innerHTML = '';
+
+      if (headings.length === 0) {
+        tocList.innerHTML = '<li class="toc-item"><span class="toc-link">No outline available</span></li>';
+        return;
+      }
+
+      const tocItems = [];
+
+      headings.forEach((heading, index) => {
+        const id = heading.id || `section-${index}`;
+        heading.id = id;
+
+        const level = parseInt(heading.tagName.replace('H', ''), 10);
+        const li = document.createElement('li');
+        li.className = `toc-item depth-${level}`;
+
+        const link = document.createElement('a');
+        link.className = 'toc-link';
+        link.href = `#${id}`;
+        link.textContent = heading.textContent.replace(/^[#\s]+/, '');
+
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          heading.scrollIntoView({ behavior: 'smooth' });
+          history.pushState(null, null, `#${id}`);
+        });
+
+        li.appendChild(link);
+        tocList.appendChild(li);
+        tocItems.push({ heading, link });
+      });
+
+      // Toc Search Filter
+      const searchInput = document.getElementById('tocSearch');
+      searchInput.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase();
+        tocItems.forEach(({ link }) => {
+          const text = link.textContent.toLowerCase();
+          link.parentElement.style.display = text.includes(query) ? 'block' : 'none';
+        });
+      });
+
+      // Intersection Observer Scrollspy
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              const activeId = entry.target.id;
+              tocItems.forEach(({ link }) => {
+                const href = link.getAttribute('href').replace('#', '');
+                if (href === activeId) {
+                  link.classList.add('active');
+                } else {
+                  link.classList.remove('active');
+                }
+              });
+            }
+          });
+        },
+        { rootMargin: '-10% 0px -75% 0px' }
+      );
+
+      headings.forEach((h) => observer.observe(h));
+    }
   </script>
 </body>
+
 </html>
