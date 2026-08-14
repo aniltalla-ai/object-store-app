@@ -4,7 +4,7 @@ const path = require('path');
 const os = require('os');
 const { v4: uuidv4 } = require('uuid');
 const StorageAdapter = require('./storageAdapter');
-const authMiddleware = require('./security');
+const xsuaaAuth = require('./security');
 
 const router = express.Router();
 
@@ -38,42 +38,9 @@ const normalizeRelativePath = (value) => {
   return value.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '').replace(/\/+/g, '/');
 };
 
-const resolvePathValue = (req, fallbackKeys = []) => {
-  const keys = Array.isArray(fallbackKeys) ? fallbackKeys : [fallbackKeys];
-  const allKeys = [
-    ...keys,
-    'path',
-    'location',
-    'StartIn',
-    'sourcePath',
-    'destinationPath',
-    'storagePath',
-    'storage',
-    'destination'
-  ];
-
-  const candidates = [];
-
-  for (const k of allKeys) {
-    if (!k) continue;
-    const lowerK = k.toLowerCase();
-
-    if (typeof req.query?.[k] === 'string') candidates.push(req.query[k]);
-    if (typeof req.query?.[lowerK] === 'string') candidates.push(req.query[lowerK]);
-
-    if (typeof req.params?.[k] === 'string') candidates.push(req.params[k]);
-    if (typeof req.params?.[lowerK] === 'string') candidates.push(req.params[lowerK]);
-
-    if (typeof req.headers?.[k] === 'string') candidates.push(req.headers[k]);
-    if (typeof req.headers?.[lowerK] === 'string') candidates.push(req.headers[lowerK]);
-
-    if (req.body && typeof req.body === 'object') {
-      if (typeof req.body[k] === 'string') candidates.push(req.body[k]);
-      if (typeof req.body[lowerK] === 'string') candidates.push(req.body[lowerK]);
-    }
-  }
-
-  return candidates.find((value) => typeof value === 'string' && value.trim().length > 0)?.trim();
+const getParam = (req, key) => {
+  const val = req.query?.[key] ?? req.body?.[key] ?? req.params?.[key] ?? req.headers?.[key];
+  return typeof val === 'string' ? val.trim() : '';
 };
 
 const getUploadSession = (idOrName) => {
@@ -100,30 +67,13 @@ const toBinaryPayload = (req) => {
   return Buffer.alloc(0);
 };
 
-const validateAndSetInstance = (req, res, next) => {
-  const tokenInstance = req.user?.attr?.object_store_instance?.[0];
-  const routeInstance = req.params.destinationName || req.query?.destinationName || req.query?.instance;
 
-  if (routeInstance && tokenInstance && tokenInstance !== routeInstance) {
-    return res.status(403).json({
-      error: `Security Alert Mismatch: Authenticated token represents system [${tokenInstance}], but request path attempted to manipulate destination [${routeInstance}].`
-    });
-  }
+router.use(xsuaaAuth);
 
-  req.instanceId = routeInstance || tokenInstance;
-  if (!req.instanceId) {
-    return res.status(400).json({ error: "Missing required 'destinationName' path parameter." });
-  }
-
-  next();
-};
-
-router.use(authMiddleware);
-
-router.post('/:destinationName/createPath', validateAndSetInstance, async (req, res) => {
+router.post('/:destinationName/createPath', async (req, res) => {
   try {
     const provider = await StorageAdapter.getClient(req.instanceId);
-    const customPath = resolvePathValue(req, ['path']);
+    const customPath = getParam(req, 'path');
     if (!customPath) return res.status(400).json({ error: "Missing required 'path' parameter." });
 
     const normalizedPath = normalizeRelativePath(customPath);
@@ -144,10 +94,10 @@ router.post('/:destinationName/createPath', validateAndSetInstance, async (req, 
   }
 });
 
-router.get('/:destinationName/list', validateAndSetInstance, async (req, res) => {
+router.get('/:destinationName/list', async (req, res) => {
   try {
     const provider = await StorageAdapter.getClient(req.instanceId);
-    const subfolder = resolvePathValue(req, ['StartIn']) || '';
+    const subfolder = getParam(req, 'StartIn') || getParam(req, 'startIn');
     const prefixFilter = `${req.instanceId}/${normalizeRelativePath(subfolder)}`.replace(/\/+/g, '/').replace(/\/$/, '');
 
     let files = [];
@@ -194,9 +144,9 @@ router.get('/:destinationName/list', validateAndSetInstance, async (req, res) =>
   }
 });
 
-router.get('/:destinationName/getChunk', validateAndSetInstance, async (req, res) => {
+router.get('/:destinationName/getChunk', async (req, res) => {
   try {
-    const targetValue = resolvePathValue(req, ['location']);
+    const targetValue = getParam(req, 'location');
     if (!targetValue) return res.status(400).json({ error: "Missing required 'location' parameter." });
 
     const targetPath = `${req.instanceId}/${normalizeRelativePath(targetValue)}`;
@@ -227,11 +177,11 @@ router.get('/:destinationName/getChunk', validateAndSetInstance, async (req, res
   }
 });
 
-router.post('/:destinationName/copy', validateAndSetInstance, async (req, res) => {
+router.post('/:destinationName/copy', async (req, res) => {
   try {
     const provider = await StorageAdapter.getClient(req.instanceId);
-    const sourceFile = resolvePathValue(req, ['sourcePath']);
-    const destinationFile = resolvePathValue(req, ['destinationPath']);
+    const sourceFile = getParam(req, 'sourcePath');
+    const destinationFile = getParam(req, 'destinationPath');
 
     if (!sourceFile || !destinationFile) {
       return res.status(400).json({ error: "Missing 'sourcePath' or 'destinationPath' parameters." });
@@ -259,11 +209,11 @@ router.post('/:destinationName/copy', validateAndSetInstance, async (req, res) =
   }
 });
 
-router.post('/:destinationName/move', validateAndSetInstance, async (req, res) => {
+router.post('/:destinationName/move', async (req, res) => {
   try {
     const provider = await StorageAdapter.getClient(req.instanceId);
-    const sourceFile = resolvePathValue(req, ['sourcePath']);
-    const destinationFile = resolvePathValue(req, ['destinationPath']);
+    const sourceFile = getParam(req, 'sourcePath');
+    const destinationFile = getParam(req, 'destinationPath');
 
     if (!sourceFile || !destinationFile) {
       return res.status(400).json({ error: "Missing 'sourcePath' or 'destinationPath' parameters." });
@@ -291,10 +241,10 @@ router.post('/:destinationName/move', validateAndSetInstance, async (req, res) =
   }
 });
 
-router.get('/:destinationName/get', validateAndSetInstance, async (req, res) => {
+router.get('/:destinationName/get', async (req, res) => {
   try {
     const provider = await StorageAdapter.getClient(req.instanceId);
-    const targetPath = resolvePathValue(req, ['location']);
+    const targetPath = getParam(req, 'location');
     if (!targetPath) return res.status(400).json({ error: "Missing required 'location' parameter." });
 
     await provider.download(`${req.instanceId}/${normalizeRelativePath(targetPath)}`, res);
@@ -307,10 +257,10 @@ router.get('/:destinationName/get', validateAndSetInstance, async (req, res) => 
   }
 });
 
-router.post('/:destinationName/post', validateAndSetInstance, async (req, res) => {
+router.post('/:destinationName/post', async (req, res) => {
   try {
     const provider = await StorageAdapter.getClient(req.instanceId);
-    const targetLocation = resolvePathValue(req, ['location']);
+    const targetLocation = getParam(req, 'location');
     if (!targetLocation) return res.status(400).json({ error: "Missing required 'location' query parameter." });
 
     const filePayload = toBinaryPayload(req);
@@ -321,7 +271,7 @@ router.post('/:destinationName/post', validateAndSetInstance, async (req, res) =
     const tempFile = path.join(TEMP_DIR, `${uuidv4()}-${path.basename(targetLocation)}`);
     fs.writeFileSync(tempFile, filePayload);
     const readStream = fs.createReadStream(tempFile);
-    readStream.on('error', () => {});
+    readStream.on('error', () => { });
     await provider.uploadStream(targetPath, readStream, tempFile);
     fs.existsSync(tempFile) && fs.unlinkSync(tempFile);
 
@@ -339,10 +289,10 @@ router.post('/:destinationName/post', validateAndSetInstance, async (req, res) =
   }
 });
 
-router.post('/:destinationName/postasync', validateAndSetInstance, async (req, res) => {
+router.post('/:destinationName/postasync', async (req, res) => {
   try {
     const provider = await StorageAdapter.getClient(req.instanceId);
-    const targetLocation = resolvePathValue(req, ['location']);
+    const targetLocation = getParam(req, 'location');
     if (!targetLocation) return res.status(400).json({ error: "Missing required 'location' query parameter." });
 
     const filePayload = toBinaryPayload(req);
@@ -361,10 +311,10 @@ router.post('/:destinationName/postasync', validateAndSetInstance, async (req, r
   }
 });
 
-router.delete('/:destinationName/delete', validateAndSetInstance, async (req, res) => {
+router.delete('/:destinationName/delete', async (req, res) => {
   try {
     const provider = await StorageAdapter.getClient(req.instanceId);
-    const targetPath = resolvePathValue(req, ['location']);
+    const targetPath = getParam(req, 'location');
     if (!targetPath) return res.status(400).json({ error: "Missing required 'location' parameter." });
 
     try {
@@ -378,9 +328,9 @@ router.delete('/:destinationName/delete', validateAndSetInstance, async (req, re
   }
 });
 
-router.post('/:destinationName/setStorage', validateAndSetInstance, async (req, res) => {
+router.post('/:destinationName/setStorage', async (req, res) => {
   try {
-    const targetLocation = resolvePathValue(req, ['location']);
+    const targetLocation = getParam(req, 'location');
     const storageType = req.query?.storage || 'Archive';
     if (!targetLocation) return res.status(400).json({ error: "Missing required 'location' parameter." });
 
@@ -524,8 +474,8 @@ router.post('/writeComplete/:fileName', async (req, res) => {
       return res.status(404).json({ error: 'Upload chunk file is missing. Please restart the upload.' });
     }
 
-    const rawDest = resolvePathValue(req, ['destination']) || '';
-    const rawStoragePath = resolvePathValue(req, ['storagePath']) || '';
+    const rawDest = getParam(req, 'destination');
+    const rawStoragePath = getParam(req, 'storagePath');
 
     let instanceKey = req.user?.attr?.object_store_instance?.[0];
     let folderPath = '';
@@ -563,7 +513,7 @@ router.post('/writeComplete/:fileName', async (req, res) => {
     const fileSize = stat.size;
 
     const readStream = fs.createReadStream(session.path);
-    readStream.on('error', () => {});
+    readStream.on('error', () => { });
     await provider.uploadStream(targetPath, readStream, session.path);
 
     if (fs.existsSync(session.path)) fs.unlinkSync(session.path);

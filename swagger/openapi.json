@@ -13,6 +13,9 @@
   ],
   "security": [
     {
+      "OAuth2ClientCredentials": []
+    },
+    {
       "BearerAuth": []
     }
   ],
@@ -617,10 +620,21 @@
   },
   "components": {
     "securitySchemes": {
+      "OAuth2ClientCredentials": {
+        "type": "oauth2",
+        "description": "SAP XSUAA OAuth2 Authentication (Enter Client ID, Client Secret, and Token URL)",
+        "flows": {
+          "clientCredentials": {
+            "tokenUrl": "https://<subdomain>.authentication.<region>.hana.ondemand.com/oauth/token",
+            "scopes": {}
+          }
+        }
+      },
       "BearerAuth": {
         "type": "http",
         "scheme": "bearer",
-        "bearerFormat": "JWT"
+        "bearerFormat": "JWT",
+        "description": "Paste XSUAA Bearer JWT Token"
       }
     },
     "schemas": {
