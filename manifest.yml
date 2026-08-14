@@ -8,6 +8,4 @@ applications:
     command: node server.js
     env:
       NODE_ENV: production
-    services:
-      - GTMS_ObjectStore
       

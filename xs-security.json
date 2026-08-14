@@ -1,5 +1,5 @@
 {
-  "xsappname": "object-store-app",
+  "xsappname": "os-gtms-auth",
   "tenant-mode": "dedicated",
   "scopes": [
     {
@@ -24,7 +24,7 @@
   ],
   "role-templates": [
     {
-      "name": "ObjectStoreUser",
+      "name": "os-gtms-auth-role",
       "description": "User role for the object store application",
       "scope-references": [
         "$XSAPPNAME.read",
@@ -32,7 +32,12 @@
         "$XSAPPNAME.execute"
       ],
       "attribute-references": [
-        "object_store_instance"
+        {
+          "name":"object_store_instance",
+          "default-values": [
+            "GTMS_ObjectStore"
+          ]
+        }        
       ]
     }
   ]

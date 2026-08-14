@@ -625,7 +625,7 @@
         "description": "SAP XSUAA OAuth2 Authentication (Enter Client ID, Client Secret, and Token URL)",
         "flows": {
           "clientCredentials": {
-            "tokenUrl": "https://<subdomain>.authentication.<region>.hana.ondemand.com/oauth/token",
+            "tokenUrl": "https://gtms.authentication.eu10.hana.ondemand.com/oauth/token",
             "scopes": {}
           }
         }
