@@ -1,109 +1,63 @@
-const passport = require('passport');
 const xsenv = require('@sap/xsenv');
-const { XssecPassportStrategy, XsuaaService, SECURITY_CONTEXT } = require('@sap/xssec');
-/*
-const strategyNames = [];
+const { XsuaaService, createSecurityContext } = require('@sap/xssec');
 
-try {
-  // const xsuaaServices = xsenv.readServices().xsuaa || [];
-  const xsuaaServices = xsenv.filterServices({ tag: 'xsuaa' });
+xsenv.loadEnv();
 
-  if (xsuaaServices.length === 0) {
-    console.error("No XSUAA services found bound to this application!");
-  }
-  else {
-    xsuaaServices.forEach((uaaService, index) => {
-      console.log(`Setting up XSUAA Passport Strategy for service: ${index}`);
-      const strategyName = `JWT_${index}`;
-      strategyNames.push(strategyName);
-      passport.use(strategyName, new JWTStrategy(uaaService));
-    });
-  }
-} catch (err) {
-  console.log(`XSUAA Setup Warning: ${err.message}`);
-}
-
-// const passportJwtAuth = passport.authenticate('JWT', { session: false });
-
-// 2. Create middleware that loops through all registered strategies
-const multiStrategyAuth = (req, res, next) => {
-    console.log(`Authentication Process Start`);
-    if (strategyNames.length === 0) {
-        return res.status(500).json({ error: "No XSUAA strategies configured." });
-    }
-
-    let currentIndex = 0;
-
-    const tryNext = () => {
-        if (currentIndex >= strategyNames.length) {
-            // Checked all XSUAA instances and none matched the token
-            return res.status(401).json({ error: "Unauthorized: Invalid XSUAA JWT token across all instances." });
-        }
-
-        const currentStrategy = strategyNames[currentIndex];
-        currentIndex++;
-        console.log(`Strategy: ${currentStrategy}`)
-        passport.authenticate(currentStrategy, { session: false }, (err, user, info) => {
-            if (err || !user) {
-                // This instance failed, try the next one
-                return tryNext();
-            }
-            // Success! Attach the validated user/authInfo and move to your route handler
-            req.authInfo = user;
-            next();
-        })(req, res, next);
-    };
-
-    tryNext();
-};
-*/
-
-// 1. Load all bound XSUAA services and wrap them in XsuaaService instances
+// Load raw service definitions for xsuaa
 const rawXsuaaServices = xsenv.filterServices({ tag: 'xsuaa' });
-const xsuaaServices = rawXsuaaServices.map(service => new XsuaaService(service));
+
+// Create XsuaaService instances correctly using the inner credentials block
+const xsuaaServices = rawXsuaaServices.map(service => {
+    // xsenv bindings typically have the properties nested under service.credentials
+    const serviceCreds = service.credentials || service;
+    return new XsuaaService(serviceCreds);
+});
 
 if (xsuaaServices.length === 0) {
     console.error("No XSUAA services found bound to this application!");
 }
 
-// 2. Create a clean validation middleware
-const dynamicAuthMiddleware = async (req, res, next) => {
+const xsuaaAuth = async (req, res, next) => {
     if (xsuaaServices.length === 0) {
         return res.status(500).json({ error: "Server misconfigured: No XSUAA bindings found." });
     }
 
-    try {
-        // Pass the ENTIRE array of XSUAA services. 
-        // xssec will automatically try validating the request against all of them.
-        const securityContext = await createSecurityContext(xsuaaServices, { req });
-        
-        // Attach the validated security context to the request object
-        req.securityContext = securityContext;
-        next();
-    } catch (error) {
-        console.error("[AUTH FAILED] Token validation error:", error.message);
+    let securityContext = null;
+
+    // Iterate through services to validate the incoming token
+    for (const service of xsuaaServices) {
+        try {
+            securityContext = await createSecurityContext(service, { req });
+            break; // Successfully matched audience and signature!
+        } catch (err) {
+            // This instance didn't match the token's audience, try the next one
+        }
+    }
+
+    if (!securityContext) {
+        console.error("[AUTH FAILED] Token did not match any bound XSUAA service audiences.");
         return res.status(401).json({ error: "Unauthorized: Invalid token signature or issuer." });
     }
-};
 
-const xsuaaAuth = (req, res, next) => {
-  return dynamicAuthMiddleware(req, res, (err) => {
-    if (err || !req.user) {
-      return res.status(401).json({ error: 'Unauthorized: Invalid XSUAA JWT token.' });
+    try {
+        
+        const tokenPayload = securityContext.token?.payload || {};
+        const clientId = tokenPayload.client_id || '';
+        const objectStoreName = process.env[clientId] || null;
+
+        if (!objectStoreName) {
+            return res.status(400).json({ 
+                error: 'No Object Store Instance attribute found. Ensure you are using a user token (not client credentials) and that the role template assigns this attribute.' 
+            });
+        }
+
+        req.securityContext = securityContext;
+        req.instanceId = objectStoreName;
+        next();
+    } catch (error) {
+        console.error("[AUTH FAILED] Error parsing token payload:", error.message);
+        return res.status(401).json({ error: "Unauthorized: Failed to parse token payload." });
     }
-
-    const authInfo = req.authInfo;
-    const tokenPayload = authInfo?.getTokenInfo?.()?.getPayload?.() || {};
-    const userAttributes = tokenPayload['xs.user_attributes'] || tokenPayload.user_attributes;
-    const objectStoreName = userAttributes?.object_store_instance?.[0] || null;
-
-    if (!objectStoreName) {
-      return res.status(400).json({ error: 'No Object Store Instance is bound to the user.' });
-    }
-
-    req.instanceId = objectStoreName;
-    next();
-  });
 };
 
 module.exports = xsuaaAuth;
