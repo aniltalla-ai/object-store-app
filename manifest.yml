@@ -6,8 +6,4 @@ applications:
     disk_quota: 512M
     buildpack: nodejs_buildpack
     command: node server.js
-    env:
-      NODE_ENV: production
-    services:
-      - GTMS_ObjectStore
       

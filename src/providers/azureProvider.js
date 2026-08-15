@@ -10,10 +10,10 @@ class AzureProvider {
     return this.client.getContainerClient(this.container);
   }
 
-  async createPath(instanceId, defaultFolders) {
+  async createPath(rootFolder, defaultFolders) {
     const containerClient = this.getContainer();
     for (const folder of defaultFolders) {
-      const markerPath = `${instanceId}/${folder}/.init`;
+      const markerPath = `${rootFolder}/${folder}/.init`;
       await containerClient.getBlockBlobClient(markerPath).upload('', 0);
     }
   }
