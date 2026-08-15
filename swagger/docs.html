@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark" data-theme-preset="slate">
+<html lang="en" data-theme="light" data-theme-preset="slate">
 
 <head>
   <meta charset="UTF-8">
@@ -8,13 +8,13 @@
 
   <!-- Synchronous Blocking Theme Script to Prevent FOUC Flash -->
   <script>
-    (function() {
+    (function () {
       try {
-        var m = localStorage.getItem('themeMode') || 'dark';
+        var m = localStorage.getItem('themeMode') || 'light';
         var p = localStorage.getItem('themePreset') || 'slate';
         document.documentElement.setAttribute('data-theme', m);
         document.documentElement.setAttribute('data-theme-preset', p);
-      } catch (e) {}
+      } catch (e) { }
     })();
   </script>
 
@@ -132,7 +132,9 @@
           </div>
           <div id="markdown-content" class="markdown-body">
             <div style="text-align: center; padding: 4rem 0;">
-              <div style="display:inline-block; width: 36px; height: 36px; border: 3px solid var(--border-color); border-top-color: var(--accent-primary); border-radius: 50%; animation: spin 1s infinite linear;"></div>
+              <div
+                style="display:inline-block; width: 36px; height: 36px; border: 3px solid var(--border-color); border-top-color: var(--accent-primary); border-radius: 50%; animation: spin 1s infinite linear;">
+              </div>
               <p style="margin-top: 1rem; color: var(--text-muted);">Fetching documentation...</p>
             </div>
           </div>
@@ -166,7 +168,7 @@
     const sunIcon = themeToggleBtn.querySelector('.sun-icon');
     const moonIcon = themeToggleBtn.querySelector('.moon-icon');
 
-    const savedThemeMode = localStorage.getItem('themeMode') || 'dark';
+    const savedThemeMode = localStorage.getItem('themeMode') || 'light';
     const savedThemePreset = localStorage.getItem('themePreset') || 'slate';
 
     setThemeMode(savedThemeMode);

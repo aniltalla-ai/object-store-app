@@ -13,66 +13,31 @@
   ],
   "security": [
     {
-      "BearerAuth": []
+      "OAuth2ClientCredentials": []
     }
   ],
   "paths": {
-    "/Storage/{destinationName}/createPath": {
-      "post": {
-        "tags": ["Storage"],
-        "summary": "Create directory path in object store",
-        "parameters": [
-          {
-            "name": "destinationName",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "string" },
-            "description": "Object store instance name (e.g. INST_01)"
-          },
-          {
-            "name": "path",
-            "in": "query",
-            "required": true,
-            "schema": { "type": "string" },
-            "description": "Folder path to create"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Folder created successfully",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/StorageItemResponseModel" }
-              }
-            }
-          },
-          "400": { "description": "Missing parameters" },
-          "401": { "description": "Unauthorized" },
-          "403": { "description": "Security instance mismatch" }
-        }
-      }
-    },
-    "/Storage/{destinationName}/list": {
+    "/Storage/list": {
       "get": {
-        "tags": ["Storage"],
-        "summary": "List files and folders in object store destination",
+        "tags": [
+          "Storage"
+        ],
+        "summary": "List files and folders in object store without destination in path",
         "parameters": [
-          {
-            "name": "destinationName",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "string" }
-          },
           {
             "name": "StartIn",
             "in": "query",
-            "schema": { "type": "string" },
+            "schema": {
+              "type": "string"
+            },
             "description": "Subfolder prefix to search inside"
           },
           {
             "name": "Recursive",
             "in": "query",
-            "schema": { "type": "boolean" },
+            "schema": {
+              "type": "boolean"
+            },
             "description": "Recursive listing flag"
           }
         ],
@@ -81,30 +46,141 @@
             "description": "File listing",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/StorageListResponseModel" }
+                "schema": {
+                  "$ref": "#/components/schemas/StorageListResponseModel"
+                }
               }
             }
           },
-          "401": { "description": "Unauthorized" }
+          "400": {
+            "description": "Missing instance parameter"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/Storage/{destinationName}/createPath": {
+      "post": {
+        "tags": [
+          "Storage"
+        ],
+        "summary": "Create directory path in object store",
+        "parameters": [
+          {
+            "name": "destinationName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Object store instance name (e.g. INST_01)"
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Folder path to create"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Folder created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageItemResponseModel"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing parameters"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Security instance mismatch"
+          }
+        }
+      }
+    },
+    "/Storage/{destinationName}/list": {
+      "get": {
+        "tags": [
+          "Storage"
+        ],
+        "summary": "List files and folders in object store destination",
+        "parameters": [
+          {
+            "name": "destinationName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "StartIn",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Subfolder prefix to search inside"
+          },
+          {
+            "name": "Recursive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "Recursive listing flag"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File listing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageListResponseModel"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
         }
       }
     },
     "/Storage/{destinationName}/get": {
       "get": {
-        "tags": ["Storage"],
+        "tags": [
+          "Storage"
+        ],
         "summary": "Download file from destination",
         "parameters": [
           {
             "name": "destinationName",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "location",
             "in": "query",
             "required": true,
-            "schema": { "type": "string" },
+            "schema": {
+              "type": "string"
+            },
             "description": "Relative file path"
           }
         ],
@@ -113,51 +189,75 @@
             "description": "Binary file content stream",
             "content": {
               "application/octet-stream": {
-                "schema": { "type": "string", "format": "binary" }
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
               }
             }
           },
-          "400": { "description": "Missing location" },
-          "404": { "description": "File not found" }
+          "400": {
+            "description": "Missing location"
+          },
+          "404": {
+            "description": "File not found"
+          }
         }
       }
     },
     "/Storage/{destinationName}/getChunk": {
       "get": {
-        "tags": ["Storage"],
+        "tags": [
+          "Storage"
+        ],
         "summary": "Get file chunk from destination",
         "parameters": [
           {
             "name": "destinationName",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "location",
             "in": "query",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "chunkType",
             "in": "query",
-            "schema": { "$ref": "#/components/schemas/ChunkType" }
+            "schema": {
+              "$ref": "#/components/schemas/ChunkType"
+            }
           },
           {
             "name": "chunkSize",
             "in": "query",
-            "schema": { "type": "integer", "format": "int64" }
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
           },
           {
             "name": "chunkPart",
             "in": "query",
-            "schema": { "type": "integer", "format": "int64" }
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
           },
           {
             "name": "startLine",
             "in": "query",
-            "schema": { "type": "integer", "format": "int64" }
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
           }
         ],
         "responses": {
@@ -165,7 +265,10 @@
             "description": "Binary chunk content",
             "content": {
               "application/octet-stream": {
-                "schema": { "type": "string", "format": "binary" }
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
               }
             }
           }
@@ -174,20 +277,26 @@
     },
     "/Storage/{destinationName}/post": {
       "post": {
-        "tags": ["Storage"],
+        "tags": [
+          "Storage"
+        ],
         "summary": "Upload file synchronously to destination",
         "parameters": [
           {
             "name": "destinationName",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "location",
             "in": "query",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -195,16 +304,24 @@
           "required": true,
           "content": {
             "application/octet-stream": {
-              "schema": { "type": "string", "format": "binary" }
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
             },
             "text/plain": {
-              "schema": { "type": "string" }
+              "schema": {
+                "type": "string"
+              }
             },
             "multipart/form-data": {
               "schema": {
                 "type": "object",
                 "properties": {
-                  "file": { "type": "string", "format": "binary" }
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
                 }
               }
             }
@@ -215,7 +332,9 @@
             "description": "Upload success",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/StorageItemResponseModel" }
+                "schema": {
+                  "$ref": "#/components/schemas/StorageItemResponseModel"
+                }
               }
             }
           }
@@ -224,20 +343,26 @@
     },
     "/Storage/{destinationName}/postasync": {
       "post": {
-        "tags": ["Storage"],
+        "tags": [
+          "Storage"
+        ],
         "summary": "Upload file asynchronously to destination",
         "parameters": [
           {
             "name": "destinationName",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "location",
             "in": "query",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -245,40 +370,55 @@
           "required": true,
           "content": {
             "application/octet-stream": {
-              "schema": { "type": "string", "format": "binary" }
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
             },
             "text/plain": {
-              "schema": { "type": "string" }
+              "schema": {
+                "type": "string"
+              }
             }
           }
         },
         "responses": {
-          "202": { "description": "Accepted" }
+          "202": {
+            "description": "Accepted"
+          }
         }
       }
     },
     "/Storage/{destinationName}/copy": {
       "post": {
-        "tags": ["Storage"],
+        "tags": [
+          "Storage"
+        ],
         "summary": "Copy file from source path to destination path",
         "parameters": [
           {
             "name": "destinationName",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "sourcePath",
             "in": "query",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "destinationPath",
             "in": "query",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -286,7 +426,9 @@
             "description": "File copied",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/StorageItemResponseModel" }
+                "schema": {
+                  "$ref": "#/components/schemas/StorageItemResponseModel"
+                }
               }
             }
           }
@@ -295,26 +437,34 @@
     },
     "/Storage/{destinationName}/move": {
       "post": {
-        "tags": ["Storage"],
+        "tags": [
+          "Storage"
+        ],
         "summary": "Move file from source path to destination path",
         "parameters": [
           {
             "name": "destinationName",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "sourcePath",
             "in": "query",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "destinationPath",
             "in": "query",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -322,7 +472,9 @@
             "description": "File moved",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/StorageItemResponseModel" }
+                "schema": {
+                  "$ref": "#/components/schemas/StorageItemResponseModel"
+                }
               }
             }
           }
@@ -331,48 +483,64 @@
     },
     "/Storage/{destinationName}/delete": {
       "delete": {
-        "tags": ["Storage"],
+        "tags": [
+          "Storage"
+        ],
         "summary": "Delete file from destination",
         "parameters": [
           {
             "name": "destinationName",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "location",
             "in": "query",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
-          "200": { "description": "File deleted" }
+          "200": {
+            "description": "File deleted"
+          }
         }
       }
     },
     "/Storage/{destinationName}/setStorage": {
       "post": {
-        "tags": ["Storage"],
+        "tags": [
+          "Storage"
+        ],
         "summary": "Change storage class of a file",
         "parameters": [
           {
             "name": "destinationName",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "location",
             "in": "query",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "storage",
             "in": "query",
-            "schema": { "$ref": "#/components/schemas/StorageTypes" }
+            "schema": {
+              "$ref": "#/components/schemas/StorageTypes"
+            }
           }
         ],
         "responses": {
@@ -380,7 +548,9 @@
             "description": "Storage class updated",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/StorageItemResponseModel" }
+                "schema": {
+                  "$ref": "#/components/schemas/StorageItemResponseModel"
+                }
               }
             }
           }
@@ -389,7 +559,9 @@
     },
     "/Storage/listWritable": {
       "get": {
-        "tags": ["Storage"],
+        "tags": [
+          "Storage"
+        ],
         "summary": "List pending files available for writing/appending",
         "responses": {
           "200": {
@@ -398,7 +570,9 @@
               "application/json": {
                 "schema": {
                   "type": "array",
-                  "items": { "$ref": "#/components/schemas/StorageLocalFileInfo" }
+                  "items": {
+                    "$ref": "#/components/schemas/StorageLocalFileInfo"
+                  }
                 }
               }
             }
@@ -408,34 +582,52 @@
     },
     "/Storage/getWritable/{fileName}": {
       "get": {
-        "tags": ["Storage"],
+        "tags": [
+          "Storage"
+        ],
         "summary": "Get all or a portion of a writable file",
         "parameters": [
           {
             "name": "fileName",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "chunkType",
             "in": "query",
-            "schema": { "$ref": "#/components/schemas/ChunkType" }
+            "schema": {
+              "$ref": "#/components/schemas/ChunkType"
+            }
           },
           {
             "name": "startLine",
             "in": "query",
-            "schema": { "type": "integer", "format": "int64", "default": 0 }
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 0
+            }
           },
           {
             "name": "chunkSize",
             "in": "query",
-            "schema": { "type": "integer", "format": "int64", "default": 0 }
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 0
+            }
           },
           {
             "name": "chunkPart",
             "in": "query",
-            "schema": { "type": "integer", "format": "int64", "default": 0 }
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 0
+            }
           }
         ],
         "responses": {
@@ -443,7 +635,10 @@
             "description": "Writable file chunk content",
             "content": {
               "application/octet-stream": {
-                "schema": { "type": "string", "format": "binary" }
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
               }
             }
           }
@@ -452,24 +647,32 @@
     },
     "/Storage/writeStart/{fileName}": {
       "post": {
-        "tags": ["Storage"],
+        "tags": [
+          "Storage"
+        ],
         "summary": "Create a file session that can be appended to",
         "parameters": [
           {
             "name": "fileName",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "encoding",
             "in": "query",
-            "schema": { "$ref": "#/components/schemas/SupportedEncodings" }
+            "schema": {
+              "$ref": "#/components/schemas/SupportedEncodings"
+            }
           },
           {
             "name": "linebreak",
             "in": "query",
-            "schema": { "$ref": "#/components/schemas/LinebreakTypes" }
+            "schema": {
+              "$ref": "#/components/schemas/LinebreakTypes"
+            }
           }
         ],
         "requestBody": {
@@ -477,10 +680,15 @@
           "required": false,
           "content": {
             "application/octet-stream": {
-              "schema": { "type": "string", "format": "binary" }
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
             },
             "text/plain": {
-              "schema": { "type": "string" }
+              "schema": {
+                "type": "string"
+              }
             }
           }
         },
@@ -489,7 +697,9 @@
             "description": "Upload session initialized",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/StorageLocalFileInfo" }
+                "schema": {
+                  "$ref": "#/components/schemas/StorageLocalFileInfo"
+                }
               }
             }
           }
@@ -498,14 +708,18 @@
     },
     "/Storage/writeChunk/{fileName}": {
       "post": {
-        "tags": ["Storage"],
+        "tags": [
+          "Storage"
+        ],
         "summary": "Add chunk to existing writable file session",
         "parameters": [
           {
             "name": "fileName",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -513,10 +727,15 @@
           "required": false,
           "content": {
             "application/octet-stream": {
-              "schema": { "type": "string", "format": "binary" }
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
             },
             "text/plain": {
-              "schema": { "type": "string" }
+              "schema": {
+                "type": "string"
+              }
             }
           }
         },
@@ -525,7 +744,9 @@
             "description": "Chunk appended",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/StorageLocalFileInfo" }
+                "schema": {
+                  "$ref": "#/components/schemas/StorageLocalFileInfo"
+                }
               }
             }
           }
@@ -534,24 +755,32 @@
     },
     "/Storage/writeComplete/{fileName}": {
       "post": {
-        "tags": ["Storage"],
+        "tags": [
+          "Storage"
+        ],
         "summary": "Close writable file session and move to destination",
         "parameters": [
           {
             "name": "fileName",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "destination",
             "in": "query",
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "storagePath",
             "in": "query",
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -559,7 +788,9 @@
             "description": "File upload completed and stored",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/StorageItemResponseModel" }
+                "schema": {
+                  "$ref": "#/components/schemas/StorageItemResponseModel"
+                }
               }
             }
           }
@@ -568,14 +799,18 @@
     },
     "/Storage/writeCancel/{fileName}": {
       "post": {
-        "tags": ["Storage"],
+        "tags": [
+          "Storage"
+        ],
         "summary": "Cancel writing session and remove temporary chunks",
         "parameters": [
           {
             "name": "fileName",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -583,7 +818,9 @@
             "description": "Session cancelled",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/StorageLocalFileInfo" }
+                "schema": {
+                  "$ref": "#/components/schemas/StorageLocalFileInfo"
+                }
               }
             }
           }
@@ -592,14 +829,19 @@
     },
     "/Storage/uploadStatus/{uploadId}": {
       "get": {
-        "tags": ["Storage"],
+        "tags": [
+          "Storage"
+        ],
         "summary": "View pending upload status",
         "parameters": [
           {
             "name": "uploadId",
             "in": "path",
             "required": true,
-            "schema": { "type": "string", "format": "uuid" }
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "responses": {
@@ -607,7 +849,9 @@
             "description": "Upload status info",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/PendingUpload" }
+                "schema": {
+                  "$ref": "#/components/schemas/PendingUpload"
+                }
               }
             }
           }
@@ -617,33 +861,65 @@
   },
   "components": {
     "securitySchemes": {
-      "BearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "bearerFormat": "JWT"
+      "OAuth2ClientCredentials": {
+        "type": "oauth2",
+        "description": "OAuth2 Client Credentials Authorization (Client ID & Secret Key)",
+        "flows": {
+          "clientCredentials": {
+            "tokenUrl": "AUTH_TOKEN_URL",
+            "scopes": {}
+          }
+        }
       }
     },
     "schemas": {
       "StorageItemResponseModel": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "nullable": true },
-          "sizeInBytes": { "type": "integer", "format": "int64" },
-          "location": { "type": "string", "nullable": true },
-          "isDirectory": { "type": "boolean" },
-          "storageType": { "type": "string", "nullable": true },
-          "lineCount": { "type": "integer", "format": "int32", "nullable": true },
-          "creationDate": { "type": "string", "format": "date-time", "nullable": true }
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "sizeInBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "location": {
+            "type": "string",
+            "nullable": true
+          },
+          "isDirectory": {
+            "type": "boolean"
+          },
+          "storageType": {
+            "type": "string",
+            "nullable": true
+          },
+          "lineCount": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "creationDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
         },
         "additionalProperties": false
       },
       "StorageListResponseModel": {
         "type": "object",
         "properties": {
-          "bucket": { "type": "string", "nullable": true },
+          "bucket": {
+            "type": "string",
+            "nullable": true
+          },
           "items": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/StorageItemResponseModel" },
+            "items": {
+              "$ref": "#/components/schemas/StorageItemResponseModel"
+            },
             "nullable": true
           }
         },
@@ -652,50 +928,124 @@
       "StorageLocalFileInfo": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "nullable": true },
-          "sizeInBytes": { "type": "integer", "format": "int64" },
-          "lineCount": { "type": "integer", "format": "int64", "nullable": true },
-          "creationDate": { "type": "string", "format": "date-time" },
-          "updateDate": { "type": "string", "format": "date-time", "nullable": true }
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "sizeInBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lineCount": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "creationDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updateDate": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
         },
         "additionalProperties": false
       },
       "PendingUpload": {
         "type": "object",
         "properties": {
-          "id": { "type": "string", "format": "uuid" },
-          "fileName": { "type": "string", "nullable": true },
-          "location": { "type": "string", "nullable": true },
-          "destLocation": { "type": "string", "nullable": true },
-          "tenant": { "type": "string", "nullable": true },
-          "destinationId": { "type": "string", "format": "uuid" },
-          "status": { "$ref": "#/components/schemas/UploadStatus" },
-          "statusMessage": { "type": "string", "nullable": true },
-          "statusDate": { "type": "string", "format": "date-time" },
-          "insertDate": { "type": "string", "format": "date-time" },
-          "deleted": { "type": "boolean" }
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fileName": {
+            "type": "string",
+            "nullable": true
+          },
+          "location": {
+            "type": "string",
+            "nullable": true
+          },
+          "destLocation": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenant": {
+            "type": "string",
+            "nullable": true
+          },
+          "destinationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "$ref": "#/components/schemas/UploadStatus"
+          },
+          "statusMessage": {
+            "type": "string",
+            "nullable": true
+          },
+          "statusDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "insertDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deleted": {
+            "type": "boolean"
+          }
         },
         "additionalProperties": false
       },
       "UploadStatus": {
         "type": "string",
-        "enum": ["Pending", "InProgress", "Complete", "Failed"]
+        "enum": [
+          "Pending",
+          "InProgress",
+          "Complete",
+          "Failed"
+        ]
       },
       "StorageTypes": {
         "type": "string",
-        "enum": ["Standard", "Nearline", "Coldline", "Archive"]
+        "enum": [
+          "Standard",
+          "Nearline",
+          "Coldline",
+          "Archive"
+        ]
       },
       "ChunkType": {
         "type": "string",
-        "enum": ["Line", "Binary", "None"]
+        "enum": [
+          "Line",
+          "Binary",
+          "None"
+        ]
       },
       "SupportedEncodings": {
         "type": "string",
-        "enum": ["Default", "UTF8BOM", "UTF8", "UTF16BE", "UTF16LE"]
+        "enum": [
+          "Default",
+          "UTF8BOM",
+          "UTF8",
+          "UTF16BE",
+          "UTF16LE"
+        ]
       },
       "LinebreakTypes": {
         "type": "string",
-        "enum": ["Unknown", "WindowsStyle", "Windows", "LinuxStyle", "Linux"]
+        "enum": [
+          "Unknown",
+          "WindowsStyle",
+          "Windows",
+          "LinuxStyle",
+          "Linux"
+        ]
       }
     }
   }

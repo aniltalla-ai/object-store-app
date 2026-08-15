@@ -104,6 +104,7 @@
   background: var(--badge-get-bg, rgba(97, 175, 254, 0.06)) !important;
   border-color: var(--badge-get-border, rgba(97, 175, 254, 0.25)) !important;
 }
+
 .swagger-ui .opblock.opblock-get .opblock-summary-method {
   background: var(--badge-get-text, #61affe) !important;
   color: #ffffff !important;
@@ -113,6 +114,7 @@
   background: var(--badge-post-bg, rgba(73, 204, 144, 0.06)) !important;
   border-color: var(--badge-post-border, rgba(73, 204, 144, 0.25)) !important;
 }
+
 .swagger-ui .opblock.opblock-post .opblock-summary-method {
   background: var(--badge-post-text, #49cc90) !important;
   color: #ffffff !important;
@@ -122,6 +124,7 @@
   background: var(--badge-delete-bg, rgba(249, 62, 62, 0.06)) !important;
   border-color: var(--badge-delete-border, rgba(249, 62, 62, 0.25)) !important;
 }
+
 .swagger-ui .opblock.opblock-delete .opblock-summary-method {
   background: var(--badge-delete-text, #f93e3e) !important;
   color: #ffffff !important;
@@ -131,6 +134,7 @@
   background: var(--badge-put-bg, rgba(252, 161, 48, 0.06)) !important;
   border-color: var(--badge-put-border, rgba(252, 161, 48, 0.25)) !important;
 }
+
 .swagger-ui .opblock.opblock-put .opblock-summary-method {
   background: var(--badge-put-text, #fca130) !important;
   color: #ffffff !important;
@@ -206,4 +210,264 @@
   .swagger-card {
     padding: 1.25rem 1rem;
   }
+}
+
+/* Lock Body Scrolling when Authorization Modal is Open */
+body:has(.dialog-ux) {
+  overflow: hidden !important;
+}
+
+/* Responsive Full-Viewport Swagger UI Authorization Modal Popup Overrides */
+.swagger-ui .dialog-ux {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  height: 100vh !important;
+  z-index: 999999 !important;
+  background: rgba(15, 23, 42, 0.55) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+.swagger-ui .dialog-ux .backdrop-ux {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  height: 100vh !important;
+  background: transparent !important;
+}
+
+.swagger-ui .dialog-ux .modal-ux {
+  position: fixed !important;
+  top: 45% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  margin: 0 !important;
+  width: min(50vw, 600px) !important;
+  max-width: 600px !important;
+  min-width: 0 !important;
+  max-height: 85vh !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  background: var(--bg-card, #ffffff) !important;
+  border: 1px solid var(--border-color, #cbd5e1) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35) !important;
+  color: var(--text-primary, #0f172a) !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: column !important;
+  z-index: 1000000 !important;
+}
+
+.swagger-ui .dialog-ux .modal-ux-header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 100 !important;
+  background: var(--bg-sidebar, #f8fafc) !important;
+  border-bottom: 1px solid var(--border-color, #e2e8f0) !important;
+  padding: 1.25rem 1.5rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-shrink: 0 !important;
+}
+
+.swagger-ui .dialog-ux .modal-ux-header h1,
+.swagger-ui .dialog-ux .modal-ux-header h2,
+.swagger-ui .dialog-ux .modal-ux-header h3,
+.swagger-ui .dialog-ux .modal-ux-header h4,
+.swagger-ui .dialog-ux .modal-ux-header h5,
+.swagger-ui .dialog-ux .modal-ux-header h6,
+.swagger-ui .dialog-ux .modal-ux-header .modal-title,
+.swagger-ui .dialog-ux .modal-ux-header .title {
+  font-size: 0 !important;
+  color: transparent !important;
+  margin: 0 !important;
+  line-height: 1.4 !important;
+  display: block !important;
+  visibility: visible !important;
+}
+
+.swagger-ui .dialog-ux .modal-ux-header h1::after,
+.swagger-ui .dialog-ux .modal-ux-header h2::after,
+.swagger-ui .dialog-ux .modal-ux-header h3::after,
+.swagger-ui .dialog-ux .modal-ux-header h4::after,
+.swagger-ui .dialog-ux .modal-ux-header h5::after,
+.swagger-ui .dialog-ux .modal-ux-header h6::after,
+.swagger-ui .dialog-ux .modal-ux-header .modal-title::after,
+.swagger-ui .dialog-ux .modal-ux-header .title::after {
+  content: 'Authenticate' !important;
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  color: var(--text-primary, #0f172a) !important;
+  font-family: var(--font-sans) !important;
+  display: inline-block !important;
+}
+
+.swagger-ui .dialog-ux .modal-ux-header .close-modal {
+  background: transparent !important;
+  border: none !important;
+  color: var(--text-secondary, #64748b) !important;
+  cursor: pointer !important;
+  padding: 0.25rem !important;
+  font-size: 1.5rem !important;
+  line-height: 1 !important;
+  transition: color 0.2s ease !important;
+}
+
+.swagger-ui .dialog-ux .modal-ux-header .close-modal:hover {
+  color: var(--text-primary, #0f172a) !important;
+}
+
+.swagger-ui .dialog-ux .modal-ux-content {
+  background: var(--bg-card, #ffffff) !important;
+  padding: 1.5rem !important;
+  color: var(--text-primary, #0f172a) !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box !important;
+  word-break: break-word !important;
+}
+
+/* Hide Redundant Inner Scheme Title */
+.swagger-ui .dialog-ux .modal-ux-content h4,
+.swagger-ui .dialog-ux .modal-ux-content .auth-container h4,
+.swagger-ui .dialog-ux .modal-ux-content .wrapper h4 {
+  display: none !important;
+}
+
+.swagger-ui .dialog-ux .modal-ux-content p,
+.swagger-ui .dialog-ux .modal-ux-content label,
+.swagger-ui .dialog-ux .modal-ux-content h4,
+.swagger-ui .dialog-ux .modal-ux-content code,
+.swagger-ui .dialog-ux .modal-ux-content span,
+.swagger-ui .dialog-ux .modal-ux-content .flow {
+  color: var(--text-primary, #0f172a) !important;
+  max-width: 100% !important;
+  word-wrap: break-word !important;
+}
+
+.swagger-ui .dialog-ux .modal-ux-content p,
+.swagger-ui .dialog-ux .modal-ux-content .description {
+  color: var(--text-secondary, #334155) !important;
+}
+
+.swagger-ui .dialog-ux .modal-ux-content input[type="text"],
+.swagger-ui .dialog-ux .modal-ux-content input[type="password"],
+.swagger-ui .dialog-ux .modal-ux-content input[type="email"],
+.swagger-ui .dialog-ux .modal-ux-content select {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  background: var(--input-bg, #ffffff) !important;
+  border: 1px solid var(--input-border, #cbd5e1) !important;
+  color: var(--text-primary, #0f172a) !important;
+  border-radius: 8px !important;
+  padding: 0.6rem 0.8rem !important;
+  font-size: 0.95rem !important;
+  margin-top: 0.35rem !important;
+  margin-bottom: 1rem !important;
+}
+
+.swagger-ui .dialog-ux .modal-ux-content input:focus {
+  border-color: var(--accent-primary, #4f46e5) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px var(--accent-glow, rgba(79, 70, 229, 0.25)) !important;
+}
+
+.swagger-ui .dialog-ux .modal-ux-content .auth-container {
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.swagger-ui .dialog-ux .modal-ux-content .auth-btn-wrapper {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 0.75rem !important;
+  margin-top: 1.5rem !important;
+  justify-content: flex-end !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.swagger-ui .dialog-ux .modal-ux-content .auth-btn-wrapper .btn {
+  margin: 0 !important;
+  padding: 0.55rem 1.25rem !important;
+  font-size: 0.9rem !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  flex: 1 1 auto !important;
+  min-width: 100px !important;
+  text-align: center !important;
+}
+
+.swagger-ui .dialog-ux .modal-ux-content .auth-btn-wrapper .btn-done {
+  background: var(--bg-sidebar, #f1f5f9) !important;
+  border: 1px solid var(--border-color, #e2e8f0) !important;
+  color: var(--text-primary, #0f172a) !important;
+}
+
+.swagger-ui .dialog-ux .modal-ux-content .auth-btn-wrapper .modal-btn.auth {
+  background: var(--accent-primary, #4f46e5) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+/* Mobile Responsiveness Adjustments */
+@media (max-width: 640px) {
+  .swagger-ui .dialog-ux {
+    padding: 0.5rem !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+  }
+
+  .swagger-ui .dialog-ux .modal-ux {
+    width: calc(100vw - 1rem) !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    max-height: 90vh !important;
+    border-radius: 12px !important;
+    margin: 0 auto !important;
+  }
+
+  .swagger-ui .dialog-ux .modal-ux-header {
+    padding: 1rem !important;
+  }
+
+  .swagger-ui .dialog-ux .modal-ux-content {
+    padding: 1rem !important;
+  }
+
+  .swagger-ui .dialog-ux .modal-ux-content input[type="text"],
+  .swagger-ui .dialog-ux .modal-ux-content input[type="password"] {
+    font-size: 16px !important;
+  }
+
+  .swagger-ui .dialog-ux .modal-ux-content .auth-btn-wrapper {
+    flex-direction: column !important;
+  }
+
+  .swagger-ui .dialog-ux .modal-ux-content .auth-btn-wrapper .btn {
+    width: 100% !important;
+  }
+}
+
+/* Hide Scopes Section in Swagger UI Auth Dialog */
+.swagger-ui .scopes,
+.swagger-ui .auth-container .scopes,
+.swagger-ui .dialog-ux .modal-ux-content .scopes,
+.swagger-ui .dialog-ux .modal-ux-content h2.scopes,
+.swagger-ui .dialog-ux .modal-ux-content .scope-def,
+.swagger-ui .dialog-ux .modal-ux-content .scopes-title {
+  display: none !important;
 }

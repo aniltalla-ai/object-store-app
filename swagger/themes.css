@@ -514,14 +514,13 @@ body {
 .tab-view {
   display: none;
   opacity: 0;
-  transform: translateY(8px);
-  transition: opacity 0.25s ease, transform 0.25s ease;
+  transition: opacity 0.25s ease;
 }
 
 .tab-view.active {
   display: block;
   opacity: 1;
-  transform: translateY(0);
+  transform: none !important;
 }
 
 .btn-nav {

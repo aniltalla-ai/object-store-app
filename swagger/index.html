@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark" data-theme-preset="slate">
+<html lang="en" data-theme="light" data-theme-preset="slate">
 
 <head>
   <meta charset="UTF-8">
@@ -10,7 +10,7 @@
   <script>
     (function() {
       try {
-        var m = localStorage.getItem('themeMode') || 'dark';
+        var m = localStorage.getItem('themeMode') || 'light';
         var p = localStorage.getItem('themePreset') || 'slate';
         document.documentElement.setAttribute('data-theme', m);
         document.documentElement.setAttribute('data-theme-preset', p);
@@ -166,7 +166,7 @@
     const sunIcon = themeToggleBtn.querySelector('.sun-icon');
     const moonIcon = themeToggleBtn.querySelector('.moon-icon');
 
-    const savedThemeMode = localStorage.getItem('themeMode') || 'dark';
+    const savedThemeMode = localStorage.getItem('themeMode') || 'light';
     const savedThemePreset = localStorage.getItem('themePreset') || 'slate';
 
     setThemeMode(savedThemeMode);

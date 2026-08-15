@@ -1,71 +1,56 @@
-const passport = require('passport');
 const xsenv = require('@sap/xsenv');
-const { JWTStrategy } = require('@sap/xssec');
+const { XsuaaService, createSecurityContext } = require('@sap/xssec');
 
-let xsuaaServices;
-try {
-  xsuaaServices = xsenv.getServices({ xsuaa: { tag: 'xsuaa' } });
-} catch (e) {
-  try {
-    xsuaaServices = xsenv.getServices({ xsuaa: { name: 'object-store-uaa' } });
-  } catch (err) {
-    xsuaaServices = { xsuaa: {} };
-  }
+xsenv.loadEnv();
+
+const rawXsuaaServices = xsenv.filterServices({ tag: 'xsuaa' });
+
+const xsuaaServices = rawXsuaaServices.map(service => {
+  const serviceCreds = service.credentials || service;
+  return new XsuaaService(serviceCreds);
+});
+
+if (xsuaaServices.length === 0) {
+  console.error("No XSUAA services found bound to this application!");
 }
 
-if (xsuaaServices && xsuaaServices.xsuaa && Object.keys(xsuaaServices.xsuaa).length > 0) {
-  passport.use(new JWTStrategy(xsuaaServices.xsuaa));
-}
-
-const passportJwtAuth = passport.authenticate('JWT', { session: false });
-
-const xsuaaAuth = (req, res, next) => {
-  if (xsuaaServices && xsuaaServices.xsuaa && Object.keys(xsuaaServices.xsuaa).length > 0) {
-    return passportJwtAuth(req, res, (err) => {
-      if (err || !req.user) {
-        return res.status(401).json({ error: 'Unauthorized: Invalid XSUAA JWT token.' });
-      }
-
-      const authInfo = req.authInfo;
-      const rawInst = authInfo?.getAttribute?.('object_store_instance') || req.user?.attr?.object_store_instance;
-      const storeInstance = Array.isArray(rawInst) ? rawInst[0] : rawInst;
-
-      req.user = {
-        id: authInfo?.getLogonName?.() || req.user?.id || req.user?.user_name || 'AUTHENTICATED_USER',
-        attr: {
-          object_store_instance: storeInstance ? [storeInstance] : []
-        }
-      };
-      next();
-    });
+const xsuaaAuth = async (req, res, next) => {
+  if (xsuaaServices.length === 0) {
+    return res.status(500).json({ error: "Server misconfigured: No XSUAA bindings found." });
   }
 
-  const authHeader = req.headers['authorization'];
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Unauthorized: Missing Authorization header or invalid Bearer token.' });
+  let securityContext = null;
+
+  for (const service of xsuaaServices) {
+    try {
+      securityContext = await createSecurityContext(service, { req });
+      break;
+    } catch (err) {
+    }
   }
 
-  const tokenValue = authHeader.split(' ')[1];
+  if (!securityContext) {
+    console.error("[AUTH FAILED] Token did not match any bound XSUAA service audiences.");
+    return res.status(401).json({ error: "Unauthorized: Invalid token signature or issuer." });
+  }
+
   try {
-    let payload;
-    if (tokenValue.includes('.')) {
-      const parts = tokenValue.split('.');
-      payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
-    } else {
-      payload = JSON.parse(Buffer.from(tokenValue, 'base64').toString('utf8'));
+    const tokenPayload = securityContext.token?.payload || {};
+    const clientId = tokenPayload.client_id || '';
+    const objectStoreName = process.env[clientId] || null;
+
+    if (!objectStoreName) {
+      return res.status(400).json({
+        error: 'No Object Store Instance attribute found. Ensure you are using a user token (not client credentials) and that the role template assigns this attribute.'
+      });
     }
 
-    const storeInstance = payload.object_store_instance || payload.instance || (payload.attr && payload.attr.object_store_instance?.[0]);
-
-    req.user = {
-      id: payload.user || payload.sub || payload.user_name || 'AUTHENTICATED_USER',
-      attr: {
-        object_store_instance: storeInstance ? [storeInstance] : []
-      }
-    };
-    return next();
-  } catch (e) {
-    return res.status(401).json({ error: 'Unauthorized: Invalid authentication token structure.' });
+    req.securityContext = securityContext;
+    req.instanceId = objectStoreName;
+    next();
+  } catch (error) {
+    console.error("[AUTH FAILED] Error parsing token payload:", error.message);
+    return res.status(401).json({ error: "Unauthorized: Failed to parse token payload." });
   }
 };
 

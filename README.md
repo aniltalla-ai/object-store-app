@@ -79,6 +79,7 @@ The application supports the following environment variables:
 The application routes under `/Storage` and supports these endpoints:
 
 - `POST /Storage/:destinationName/createPath`
+- `GET /Storage/list`
 - `GET /Storage/:destinationName/list`
 - `POST /Storage/:destinationName/copy`
 - `POST /Storage/:destinationName/move`
