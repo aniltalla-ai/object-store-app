@@ -4,14 +4,15 @@ const AzureProvider = require('./providers/azureProvider');
 const GcpProvider = require('./providers/gcpProvider');
 
 class StorageAdapter {
-  static async getClient(destinationName) {
-    const vcap = process.env.VCAP_SERVICES ? JSON.parse(process.env.VCAP_SERVICES) : {};
-
-    if (vcap.objectstore && vcap.objectstore.length > 0) {
-      const creds = vcap.objectstore[0].credentials;
-      if (creds.access_key_id) return new AwsProvider(creds);
-      if (creds.private_key) return new GcpProvider(creds);
-      return new AzureProvider(creds);
+  static async getClient(credentials = null, destinationName = null, isUseDestionation = false) {
+    // 1. If passed a credentials object directly (from security.js / xsenv)
+    if (credentials && !isUseDestionation) {
+      if (credentials.access_key_id) return new AwsProvider(credentials);
+      if (credentials.private_key) return new GcpProvider(credentials);
+      return new AzureProvider(credentials);
+    }
+    if (!destinationName) {
+      throw new Error("Missing storage credentials or instance identifier.");
     }
 
     try {

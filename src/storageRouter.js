@@ -69,15 +69,29 @@ const toBinaryPayload = (req) => {
 
 router.use(xsuaaAuth);
 
+// Attach Storage Provider in ONE single place for all routes
+router.use(async (req, res, next) => {
+  try {
+    const credentials = req.credentials || null;
+    const destinationName = req.params.destinationName || null;
+    const isUseDestionation = req.isUseDestionation || false;
+    req.provider = await StorageAdapter.getClient(credentials, destinationName, isUseDestionation);
+    next();
+  } catch (err) {
+    console.error('[STORAGE ADAPTER INIT ERROR]', err.message);
+    return res.status(500).json({ error: `Storage provider initialization failed: ${err.message}` });
+  }
+});
+
 router.get('/list', async (req, res) => {
   try {
-    const provider = await StorageAdapter.getClient(req.instanceId);
+    const provider = req.provider;
     const subfolder = getParam(req, 'StartIn') || '';
     const normalizedSub = normalizeRelativePath(subfolder);
 
     let files = [];
     try {
-      files = await provider.list(normalizedSub, req.instanceId, subfolder);
+      files = await provider.list(normalizedSub, subfolder);
     } catch (listErr) {
       files = [];
     }
@@ -116,7 +130,7 @@ router.get('/list', async (req, res) => {
 router.post('/:destinationName/createPath', async (req, res) => {
   try {
     const destinationName = req.params.destinationName;
-    const provider = await StorageAdapter.getClient(req.instanceId);
+    const provider = req.provider;
     const customPath = getParam(req, 'path');
     if (!customPath) return res.status(400).json({ error: "Missing required 'path' parameter." });
 
@@ -141,7 +155,7 @@ router.post('/:destinationName/createPath', async (req, res) => {
 router.get('/:destinationName/list', async (req, res) => {
   try {
     const destinationName = req.params.destinationName;
-    const provider = await StorageAdapter.getClient(req.instanceId);
+    const provider = req.provider;
     const subfolder = getParam(req, 'StartIn') || '';
     const normSub = normalizeRelativePath(subfolder);
     const combinedSubfolder = normSub ? `${destinationName}/${normSub}` : destinationName;
@@ -228,7 +242,7 @@ router.get('/:destinationName/getChunk', async (req, res) => {
 router.post('/:destinationName/copy', async (req, res) => {
   try {
     const destinationName = req.params.destinationName;
-    const provider = await StorageAdapter.getClient(req.instanceId);
+    const provider = req.provider;
     const sourceFile = getParam(req, 'sourcePath');
     const destinationFile = getParam(req, 'destinationPath');
 
@@ -263,7 +277,7 @@ router.post('/:destinationName/copy', async (req, res) => {
 router.post('/:destinationName/move', async (req, res) => {
   try {
     const destinationName = req.params.destinationName;
-    const provider = await StorageAdapter.getClient(req.instanceId);
+    const provider = req.provider;
     const sourceFile = getParam(req, 'sourcePath');
     const destinationFile = getParam(req, 'destinationPath');
 
@@ -298,7 +312,7 @@ router.post('/:destinationName/move', async (req, res) => {
 router.get('/:destinationName/get', async (req, res) => {
   try {
     const destinationName = req.params.destinationName;
-    const provider = await StorageAdapter.getClient(req.instanceId);
+    const provider = req.provider;
     const targetPath = getParam(req, 'location');
     if (!targetPath) return res.status(400).json({ error: "Missing required 'location' parameter." });
 
@@ -317,7 +331,7 @@ router.get('/:destinationName/get', async (req, res) => {
 router.post('/:destinationName/post', async (req, res) => {
   try {
     const destinationName = req.params.destinationName;
-    const provider = await StorageAdapter.getClient(req.instanceId);
+    const provider = req.provider;
     const targetLocation = getParam(req, 'location');
     if (!targetLocation) return res.status(400).json({ error: "Missing required 'location' query parameter." });
 
@@ -351,7 +365,7 @@ router.post('/:destinationName/post', async (req, res) => {
 router.post('/:destinationName/postasync', async (req, res) => {
   try {
     const destinationName = req.params.destinationName;
-    const provider = await StorageAdapter.getClient(req.instanceId);
+    const provider = req.provider;
     const targetLocation = getParam(req, 'location');
     if (!targetLocation) return res.status(400).json({ error: "Missing required 'location' query parameter." });
 
@@ -375,7 +389,7 @@ router.post('/:destinationName/postasync', async (req, res) => {
 router.delete('/:destinationName/delete', async (req, res) => {
   try {
     const destinationName = req.params.destinationName;
-    const provider = await StorageAdapter.getClient(req.instanceId);
+    const provider = req.provider;
     const targetPath = getParam(req, 'location');
     if (!targetPath) return res.status(400).json({ error: "Missing required 'location' parameter." });
 
@@ -574,7 +588,7 @@ router.post('/writeComplete/:fileName', async (req, res) => {
     const relativeTarget = folderPath ? `${folderPath}/${targetFileName}` : targetFileName;
     const targetPath = `${instanceKey}/${normalizeRelativePath(relativeTarget)}`;
 
-    const provider = await StorageAdapter.getClient(instanceKey);
+    const provider = req.provider || (await StorageAdapter.getClient(req.credentials || instanceKey));
 
     const stat = fs.statSync(session.path);
     const fileSize = stat.size;
