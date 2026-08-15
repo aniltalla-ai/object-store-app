@@ -22,3 +22,5 @@ tmp_storage_chunks/
 # OS / editor artifacts
 *.swp
 *.swo
+
+default-env.json
