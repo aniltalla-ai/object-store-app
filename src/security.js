@@ -47,14 +47,6 @@ const xsuaaAuth = async (req, res, next) => {
 
     req.securityContext = securityContext;
     req.instanceId = objectStoreName;
-    const serviceInfo = xsenv.getServices({
-      objectStore: { name: objectStoreName }
-    });
-
-    // Access the credentials object
-    const credentials = serviceInfo.objectStore;
-    req.credentials = credentials;
-
     next();
   } catch (error) {
     console.error("[AUTH FAILED] Error parsing token payload:", error.message);
