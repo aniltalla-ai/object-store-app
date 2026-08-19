@@ -60,17 +60,9 @@ app.get(['/swagger/openapi.json', '/openapi.json'], (req, res) => {
 
 app.use('/swagger', express.static(path.join(__dirname, 'swagger')));
 
-// Serve raw README.md file
-app.get('/README.md', (req, res) => {
-  res.sendFile(path.join(__dirname, 'README.md'));
-});
-
 // Root Route Documentation View
 app.get('/', (req, res) => {
-  if (req.accepts('html')) {
-    return res.sendFile(path.join(__dirname, 'swagger/docs.html'));
-  }
-  res.sendFile(path.join(__dirname, 'README.md'));
+  return res.sendFile(path.join(__dirname, 'swagger/index.html'));
 });
 
 app.use('/Storage', storageRouter);
@@ -79,8 +71,7 @@ const PORT = process.env.PORT || 4004;
 app.listen(PORT, () => {
   console.log('=================================================');
   console.log(`🚀 Standalone Object Store App is live at http://localhost:${PORT}`);
-  console.log(`📖 README Docs available at http://localhost:${PORT}/`);
-  console.log(`📖 Swagger UI available at http://localhost:${PORT}/swagger/`);
+  console.log(`📖 Swagger UI available at http://localhost:${PORT}`);
   console.log(`🔒 Security Layer: Bearer OAuth / XSUAA Auth Guard`);
   console.log('=================================================');
 });

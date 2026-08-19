@@ -1,0 +1,76 @@
+/* ==========================================================================
+   THEME PRESET 4: SUNSET (Twilight Burgundy & Sunrise Amber Coral)
+   ========================================================================== */
+[data-theme-preset="sunset"] {
+  --bg-gradient: radial-gradient(circle at 15% 15%, rgba(244, 63, 94, 0.28) 0%, transparent 45%),
+    radial-gradient(circle at 85% 75%, rgba(249, 115, 22, 0.25) 0%, transparent 45%),
+    #1e1b4b;
+  --bg-main: #1e1b4b;
+  --bg-card: rgba(49, 16, 47, 0.92);
+  --bg-sidebar: rgba(36, 12, 35, 0.88);
+  --bg-header: rgba(30, 27, 75, 0.92);
+  --border-color: rgba(244, 63, 94, 0.25);
+  --border-glow: rgba(244, 63, 94, 0.45);
+  --text-primary: #ffffff;
+  --text-secondary: #fecdd3;
+  --text-muted: #fda4af;
+
+  --accent-primary: #f43f5e;
+  --accent-secondary: #f97316;
+  --accent-gradient: linear-gradient(135deg, #f43f5e 0%, #e11d48 50%, #f97316 100%);
+  --accent-glow: rgba(244, 63, 94, 0.4);
+
+  --inline-code-bg: rgba(244, 63, 94, 0.18);
+  --inline-code-text: #fda4af;
+  --inline-code-border: rgba(244, 63, 94, 0.3);
+
+  --code-bg: #12050e;
+  --code-header-bg: #881337;
+  --code-text: #fff1f2;
+
+  --table-header-bg: rgba(136, 19, 55, 0.95);
+  --table-hover: rgba(244, 63, 94, 0.12);
+
+  --input-bg: rgba(36, 12, 35, 0.8);
+  --input-border: rgba(244, 63, 94, 0.3);
+
+  --shadow-lg: 0 20px 40px -15px rgba(0, 0, 0, 0.7), 0 0 30px rgba(244, 63, 94, 0.2);
+  --shadow-card: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="light"][data-theme-preset="sunset"] {
+  --bg-gradient: radial-gradient(circle at 10% 10%, rgba(244, 63, 94, 0.1) 0%, transparent 45%),
+    radial-gradient(circle at 90% 80%, rgba(249, 115, 22, 0.06) 0%, transparent 45%),
+    #fff7ed;
+  --bg-main: #fff7ed;
+  --bg-card: rgba(255, 255, 255, 0.96);
+  --bg-sidebar: rgba(255, 237, 213, 0.88);
+  --bg-header: rgba(255, 255, 255, 0.94);
+  --border-color: #fed7aa;
+  --border-glow: rgba(244, 63, 94, 0.25);
+  --text-primary: #881337;
+  --text-secondary: #9f1239;
+  --text-muted: #be123c;
+
+  --accent-primary: #e11d48;
+  --accent-secondary: #ea580c;
+  --accent-gradient: linear-gradient(135deg, #e11d48 0%, #f43f5e 50%, #ea580c 100%);
+  --accent-glow: rgba(225, 29, 72, 0.2);
+
+  --inline-code-bg: rgba(225, 29, 72, 0.08);
+  --inline-code-text: #be123c;
+  --inline-code-border: rgba(225, 29, 72, 0.2);
+
+  --code-bg: #4c0519;
+  --code-header-bg: #881337;
+  --code-text: #fff1f2;
+
+  --table-header-bg: #ffe4e6;
+  --table-hover: rgba(225, 29, 72, 0.05);
+
+  --input-bg: #ffffff;
+  --input-border: #fca5a5;
+
+  --shadow-lg: 0 20px 40px -15px rgba(0, 0, 0, 0.06), 0 0 20px rgba(225, 29, 72, 0.08);
+  --shadow-card: 0 10px 30px -10px rgba(0, 0, 0, 0.04);
+}
