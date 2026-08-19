@@ -1,4 +1,4 @@
-const { S3Client, PutObjectCommand, ListObjectsV2Command, CopyObjectCommand, DeleteObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, ListObjectsV2Command, CopyObjectCommand, DeleteObjectCommand, GetObjectCommand, paginateListObjectsV2 } = require('@aws-sdk/client-s3');
 
 class AwsProvider {
   constructor(creds) {
@@ -20,8 +20,21 @@ class AwsProvider {
   }
 
   async list(prefixFilter) {
-    const data = await this.client.send(new ListObjectsV2Command({ Bucket: this.bucket, Prefix: prefixFilter }));
-    return (data.Contents || []).map((f) => ({ name: f.Key, size: f.Size, modified: f.LastModified }));
+    const files = [];
+    const params = { Bucket: this.bucket };
+    if (prefixFilter) params.Prefix = prefixFilter;
+
+    const paginator = paginateListObjectsV2({ client: this.client }, params);
+    for await (const page of paginator) {
+      if (page.Contents && page.Contents.length > 0) {
+        for (const f of page.Contents) {
+          const isFolder = f.Key.endsWith('/') || f.Key.endsWith('.init');
+          files.push({ name: f.Key, size: f.Size, modified: f.LastModified, isFolder });
+        }
+      }
+    }
+
+    return files;
   }
 
   async copy(source, target) {

@@ -88,6 +88,8 @@ router.get('/list', async (req, res) => {
     const provider = req.provider;
     const subfolder = getParam(req, 'StartIn') || '';
     const normalizedSub = normalizeRelativePath(subfolder);
+    const recursiveVal = getParam(req, 'Recursive').toLowerCase();
+    const isRecursive = recursiveVal === '' ? true : ['true', '1', 'yes'].includes(recursiveVal);
 
     let files = [];
     try {
@@ -96,24 +98,81 @@ router.get('/list', async (req, res) => {
       files = [];
     }
 
-    const normalizedItems = (files || [])
-      .map((file) => {
-        let rawPath = file.name?.replace(/\\/g, '/').replace(/\/+$/, '') || '';
-        const justName = rawPath.split('/').pop() || '';
+    const itemsMap = new Map();
 
-        return {
-          name: justName,
-          sizeInBytes: file.size ?? 0,
-          location: rawPath,
-          isDirectory: !!file.isFolder,
-          storageType: provider.constructor.name || 'Local',
-          lineCount: null,
-          creationDate: file.modified ? new Date(file.modified).toISOString() : new Date().toISOString()
-        };
-      })
-      .filter((item) => {
-        return item.name !== '.init' && item.name !== '';
+    (files || []).forEach((file) => {
+      let rawPath = file.name?.replace(/\\/g, '/') || '';
+      let isDir = !!file.isFolder || rawPath.endsWith('/') || rawPath.endsWith('.init');
+
+      if (rawPath.endsWith('/.init')) {
+        rawPath = rawPath.slice(0, -6);
+      } else if (rawPath.endsWith('/')) {
+        rawPath = rawPath.slice(0, -1);
+      } else if (rawPath === '.init') {
+        return;
+      }
+
+      if (isDir && rawPath) {
+        const justName = rawPath.split('/').pop() || '';
+        if (justName) {
+          itemsMap.set(rawPath, {
+            name: justName,
+            sizeInBytes: 0,
+            location: rawPath,
+            isDirectory: true,
+            storageType: provider.constructor.name || 'Local',
+            lineCount: null,
+            creationDate: file.modified ? new Date(file.modified).toISOString() : new Date().toISOString()
+          });
+        }
+      } else if (rawPath) {
+        const justName = rawPath.split('/').pop() || '';
+        if (justName && justName !== '.init') {
+          itemsMap.set(rawPath, {
+            name: justName,
+            sizeInBytes: file.size ?? 0,
+            location: rawPath,
+            isDirectory: false,
+            storageType: provider.constructor.name || 'Local',
+            lineCount: null,
+            creationDate: file.modified ? new Date(file.modified).toISOString() : new Date().toISOString()
+          });
+        }
+
+        const pathParts = rawPath.split('/');
+        pathParts.pop();
+        let currentParent = '';
+        for (const part of pathParts) {
+          if (!part) continue;
+          currentParent = currentParent ? `${currentParent}/${part}` : part;
+          if (!itemsMap.has(currentParent)) {
+            itemsMap.set(currentParent, {
+              name: part,
+              sizeInBytes: 0,
+              location: currentParent,
+              isDirectory: true,
+              storageType: provider.constructor.name || 'Local',
+              lineCount: null,
+              creationDate: file.modified ? new Date(file.modified).toISOString() : new Date().toISOString()
+            });
+          }
+        }
+      }
+    });
+
+    let normalizedItems = Array.from(itemsMap.values());
+
+    if (!isRecursive) {
+      const prefix = normalizedSub ? `${normalizedSub}/` : '';
+      normalizedItems = normalizedItems.filter((item) => {
+        if (!normalizedSub) {
+          return !item.location.includes('/');
+        }
+        if (!item.location.startsWith(prefix)) return false;
+        const relative = item.location.substring(prefix.length);
+        return relative.length > 0 && !relative.includes('/');
       });
+    }
 
     res.json({
       bucket: req.instanceId,

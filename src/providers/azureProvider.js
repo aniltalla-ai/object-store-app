@@ -21,7 +21,8 @@ class AzureProvider {
   async list(prefixFilter) {
     const files = [];
     for await (const blob of this.getContainer().listBlobsFlat({ prefix: prefixFilter })) {
-      files.push({ name: blob.name, size: blob.properties.contentLength, modified: blob.properties.lastModified });
+      const isFolder = blob.name.endsWith('/') || blob.name.endsWith('.init');
+      files.push({ name: blob.name, size: blob.properties.contentLength, modified: blob.properties.lastModified, isFolder });
     }
     return files;
   }

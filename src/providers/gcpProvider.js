@@ -21,8 +21,14 @@ class GcpProvider {
   }
 
   async list(prefixFilter) {
-    const [gcpFiles] = await this.getBucket().getFiles({ prefix: prefixFilter });
-    return gcpFiles.map((f) => ({ name: f.name, size: parseInt(f.metadata.size), modified: f.metadata.updated }));
+    const options = { autoPaginate: true };
+    if (prefixFilter) options.prefix = prefixFilter;
+
+    const [gcpFiles] = await this.getBucket().getFiles(options);
+    return gcpFiles.map((f) => {
+      const isFolder = f.name.endsWith('/') || f.name.endsWith('.init');
+      return { name: f.name, size: parseInt(f.metadata.size || 0), modified: f.metadata.updated, isFolder };
+    });
   }
 
   async copy(source, target) {

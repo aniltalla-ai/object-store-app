@@ -38,7 +38,7 @@
             "schema": {
               "type": "boolean"
             },
-            "description": "Recursive listing flag"
+            "description": "Recursive listing flag (set to false for non-recursive / folder-level listing)"
           }
         ],
         "responses": {
