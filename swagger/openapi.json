@@ -61,22 +61,13 @@
         }
       }
     },
-    "/Storage/{destinationName}/createPath": {
+    "/Storage/createPath": {
       "post": {
         "tags": [
           "Storage"
         ],
         "summary": "Create directory path in object store",
         "parameters": [
-          {
-            "name": "destinationName",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            },
-            "description": "Object store instance name (e.g. INST_01)"
-          },
           {
             "name": "path",
             "in": "query",
@@ -110,70 +101,13 @@
         }
       }
     },
-    "/Storage/{destinationName}/list": {
-      "get": {
-        "tags": [
-          "Storage"
-        ],
-        "summary": "List files and folders in object store destination",
-        "parameters": [
-          {
-            "name": "destinationName",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "StartIn",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            },
-            "description": "Subfolder prefix to search inside"
-          },
-          {
-            "name": "Recursive",
-            "in": "query",
-            "schema": {
-              "type": "boolean"
-            },
-            "description": "Recursive listing flag"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "File listing",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StorageListResponseModel"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized"
-          }
-        }
-      }
-    },
-    "/Storage/{destinationName}/get": {
+    "/Storage/get": {
       "get": {
         "tags": [
           "Storage"
         ],
         "summary": "Download file from destination",
         "parameters": [
-          {
-            "name": "destinationName",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "location",
             "in": "query",
@@ -205,21 +139,13 @@
         }
       }
     },
-    "/Storage/{destinationName}/getChunk": {
+    "/Storage/getChunk": {
       "get": {
         "tags": [
           "Storage"
         ],
         "summary": "Get file chunk from destination",
         "parameters": [
-          {
-            "name": "destinationName",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "location",
             "in": "query",
@@ -275,21 +201,13 @@
         }
       }
     },
-    "/Storage/{destinationName}/post": {
+    "/Storage/post": {
       "post": {
         "tags": [
           "Storage"
         ],
         "summary": "Upload file synchronously to destination",
         "parameters": [
-          {
-            "name": "destinationName",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "location",
             "in": "query",
@@ -341,21 +259,13 @@
         }
       }
     },
-    "/Storage/{destinationName}/postasync": {
+    "/Storage/postasync": {
       "post": {
         "tags": [
           "Storage"
         ],
         "summary": "Upload file asynchronously to destination",
         "parameters": [
-          {
-            "name": "destinationName",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "location",
             "in": "query",
@@ -389,21 +299,13 @@
         }
       }
     },
-    "/Storage/{destinationName}/copy": {
+    "/Storage/copy": {
       "post": {
         "tags": [
           "Storage"
         ],
         "summary": "Copy file from source path to destination path",
         "parameters": [
-          {
-            "name": "destinationName",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "sourcePath",
             "in": "query",
@@ -435,21 +337,13 @@
         }
       }
     },
-    "/Storage/{destinationName}/move": {
+    "/Storage/move": {
       "post": {
         "tags": [
           "Storage"
         ],
         "summary": "Move file from source path to destination path",
         "parameters": [
-          {
-            "name": "destinationName",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "sourcePath",
             "in": "query",
@@ -481,21 +375,13 @@
         }
       }
     },
-    "/Storage/{destinationName}/delete": {
+    "/Storage/delete": {
       "delete": {
         "tags": [
           "Storage"
         ],
         "summary": "Delete file from destination",
         "parameters": [
-          {
-            "name": "destinationName",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
           {
             "name": "location",
             "in": "query",
@@ -508,51 +394,6 @@
         "responses": {
           "200": {
             "description": "File deleted"
-          }
-        }
-      }
-    },
-    "/Storage/{destinationName}/setStorage": {
-      "post": {
-        "tags": [
-          "Storage"
-        ],
-        "summary": "Change storage class of a file",
-        "parameters": [
-          {
-            "name": "destinationName",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "location",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "storage",
-            "in": "query",
-            "schema": {
-              "$ref": "#/components/schemas/StorageTypes"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Storage class updated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StorageItemResponseModel"
-                }
-              }
-            }
           }
         }
       }

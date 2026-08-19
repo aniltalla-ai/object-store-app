@@ -1,5 +1,5 @@
 {
-  "xsappname": "object-store-app",
+  "xsappname": "os-gtms-auth",
   "tenant-mode": "dedicated",
   "scopes": [
     {
@@ -15,24 +15,17 @@
       "description": "Execute object store operations"
     }
   ],
-  "attributes": [
-    {
-      "name": "object_store_instance",
-      "description": "Object Store Instance Identifier used to scope access",
-      "valueType": "string"
-    }
+  "authorities": [
+    "$XSAPPNAME.GTMS_ObjectStore"
   ],
   "role-templates": [
     {
-      "name": "ObjectStoreUser",
+      "name": "os-gtms-auth-role",
       "description": "User role for the object store application",
       "scope-references": [
         "$XSAPPNAME.read",
         "$XSAPPNAME.write",
         "$XSAPPNAME.execute"
-      ],
-      "attribute-references": [
-        "object_store_instance"
       ]
     }
   ]

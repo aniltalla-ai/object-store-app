@@ -13,9 +13,9 @@ class GcpProvider {
     return this.client.bucket(this.bucket);
   }
 
-  async createPath(rootFolder, defaultFolders) {
+  async createPath(defaultFolders) {
     for (const folder of defaultFolders) {
-      const markerPath = `${rootFolder}/${folder}/.init`;
+      const markerPath = `${folder}/.init`;
       await this.getBucket().file(markerPath).save('');
     }
   }

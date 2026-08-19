@@ -70,8 +70,6 @@ app.use('/Storage', storageRouter);
 const PORT = process.env.PORT || 4004;
 app.listen(PORT, () => {
   console.log('=================================================');
-  console.log(`🚀 Standalone Object Store App is live at http://localhost:${PORT}`);
-  console.log(`📖 Swagger UI available at http://localhost:${PORT}`);
-  console.log(`🔒 Security Layer: Bearer OAuth / XSUAA Auth Guard`);
+  console.log(`🚀 Object Store App is live at http://localhost:${PORT}`);
   console.log('=================================================');
 });

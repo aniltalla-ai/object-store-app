@@ -21,7 +21,7 @@
 }
 
 .swagger-ui .info {
-  margin: 1rem 0 2rem 0 !important;
+  margin: 1rem 0 1rem 0 !important;
 }
 
 .swagger-ui .info .title {
@@ -292,6 +292,7 @@ body:has(.dialog-ux) {
   line-height: 1.4 !important;
   display: block !important;
   visibility: visible !important;
+  padding: 0;
 }
 
 .swagger-ui .dialog-ux .modal-ux-header h1::after,
@@ -470,4 +471,12 @@ body:has(.dialog-ux) {
 .swagger-ui .dialog-ux .modal-ux-content .scope-def,
 .swagger-ui .dialog-ux .modal-ux-content .scopes-title {
   display: none !important;
+}
+
+.swagger-ui .scheme-container .schemes>.schemes-server-container{
+  visibility: hidden;
+}
+
+.swagger-ui .info .title small, .swagger-ui .info hgroup.main a{
+  display: none;
 }

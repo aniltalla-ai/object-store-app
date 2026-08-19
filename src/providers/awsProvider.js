@@ -12,9 +12,9 @@ class AwsProvider {
     });
   }
 
-  async createPath(rootFolder, defaultFolders) {
+  async createPath(defaultFolders) {
     for (const folder of defaultFolders) {
-      const markerPath = `${rootFolder}/${folder}/.init`;
+      const markerPath = `${folder}/.init`;
       await this.client.send(new PutObjectCommand({ Bucket: this.bucket, Key: markerPath, Body: '' }));
     }
   }

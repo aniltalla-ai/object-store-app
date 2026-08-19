@@ -20,3 +20,6 @@ Thumbs.db
 .mta/
 *.mtar
 app/
+config-v1.md
+config-v2.md
+default-env.json

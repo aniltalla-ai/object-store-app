@@ -12,37 +12,51 @@ window.onload = function () {
     });
     window.ui = ui;
 
-    // Theme Preset Switching Logic
-    const presetSelect = document.getElementById('themePresetSelect');
+    const documentElement = document.documentElement;
+    const themePresetSelect = document.getElementById('themePresetSelect');
     const themeStylesheet = document.getElementById('theme-stylesheet');
-    const htmlTag = document.documentElement;
 
-    presetSelect.addEventListener('change', (e) => {
-        const selectedPreset = e.target.value;
-        const previousPreset = htmlTag.getAttribute('data-theme-preset');
-        htmlTag.setAttribute('data-theme-preset', selectedPreset);
-        themeStylesheet.href = themeStylesheet.href.replace(previousPreset, selectedPreset);
-        localStorage.setItem('api_theme_preset', selectedPreset);
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const sunIcon = themeToggleBtn.querySelector('.sun-icon');
+    const moonIcon = themeToggleBtn.querySelector('.moon-icon');
+
+    const savedThemeMode = localStorage.getItem('themeMode') || 'dark';
+    const savedThemePreset = localStorage.getItem('themePreset') || 'cyberpunk';
+
+    setThemeMode(savedThemeMode);
+    setThemePreset(savedThemePreset);
+
+    themeToggleBtn.addEventListener('click', () => {
+      const currentMode = document.documentElement.getAttribute('data-theme');
+      const newMode = currentMode === 'dark' ? 'light' : 'dark';
+      setThemeMode(newMode);
     });
 
-    // Light/Dark Mode Toggle Logic
-    const toggleBtn = document.getElementById('themeToggleBtn');
-    toggleBtn.addEventListener('click', () => {
-        const currentTheme = htmlTag.getAttribute('data-theme');
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        htmlTag.setAttribute('data-theme', newTheme);
-        localStorage.setItem('api_theme_mode', newTheme);
-    });
+    if (themePresetSelect) {
+      themePresetSelect.addEventListener('change', (e) => {
+        setThemePreset(e.target.value);
+      });
+    }
 
-    // Restore Saved Preferences
-    const savedPreset = localStorage.getItem('api_theme_preset');
-    const savedMode = localStorage.getItem('api_theme_mode');
-    if (savedPreset) {
-        themeStylesheet.href = themeStylesheet.href.replace(presetSelect.value, savedPreset);
-        presetSelect.value = savedPreset;
-        htmlTag.setAttribute('data-theme-preset', savedPreset);
+    function setThemeMode(mode) {
+      documentElement.setAttribute('data-theme', mode);
+      localStorage.setItem('themeMode', mode);
+      if (mode === 'dark') {
+        sunIcon.style.display = 'none';
+        moonIcon.style.display = 'block';
+      } else {
+        sunIcon.style.display = 'block';
+        moonIcon.style.display = 'none';
+      }
     }
-    if (savedMode) {
-        htmlTag.setAttribute('data-theme', savedMode);
+
+    function setThemePreset(preset) {
+      documentElement.setAttribute('data-theme-preset', preset);
+      localStorage.setItem('themePreset', preset);
+      if (themePresetSelect) {
+        themePresetSelect.value = preset;
+        themeStylesheet.href = `swagger/css/themes/${preset}.css`;
+      }
     }
+    
 };

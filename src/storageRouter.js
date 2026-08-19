@@ -91,7 +91,7 @@ router.get('/list', async (req, res) => {
 
     let files = [];
     try {
-      files = await provider.list(normalizedSub, subfolder);
+      files = await provider.list(normalizedSub);
     } catch (listErr) {
       files = [];
     }
@@ -127,16 +127,15 @@ router.get('/list', async (req, res) => {
   }
 });
 
-router.post('/:destinationName/createPath', async (req, res) => {
+router.post('/createPath', async (req, res) => {
   try {
-    const destinationName = req.params.destinationName;
     const provider = req.provider;
     const customPath = getParam(req, 'path');
     if (!customPath) return res.status(400).json({ error: "Missing required 'path' parameter." });
 
     const normalizedPath = normalizeRelativePath(customPath);
-    const targetedFolderStructure = `${destinationName}/${normalizedPath}`;
-    await provider.createPath(destinationName, [normalizedPath]);
+    const targetedFolderStructure = `${normalizedPath}`;
+    await provider.createPath([normalizedPath]);
 
     res.status(200).json({
       name: normalizedPath,
@@ -152,66 +151,12 @@ router.post('/:destinationName/createPath', async (req, res) => {
   }
 });
 
-router.get('/:destinationName/list', async (req, res) => {
+router.get('/getChunk', async (req, res) => {
   try {
-    const destinationName = req.params.destinationName;
-    const provider = req.provider;
-    const subfolder = getParam(req, 'StartIn') || '';
-    const normSub = normalizeRelativePath(subfolder);
-    const combinedSubfolder = normSub ? `${destinationName}/${normSub}` : destinationName;
-
-    let files = [];
-    try {
-      files = await provider.list(combinedSubfolder, req.instanceId, combinedSubfolder);
-    } catch (listErr) {
-      files = [];
-    }
-
-    const normalizedItems = (files || [])
-      .map((file) => {
-        let rawPath = file.name?.replace(/\\/g, '/').replace(/\/+$/, '') || '';
-        let relativePath = rawPath;
-        if (relativePath.startsWith(`${destinationName}/`)) {
-          relativePath = relativePath.substring(destinationName.length + 1);
-        }
-
-        const fullLocation = relativePath ? `${destinationName}/${relativePath}` : destinationName;
-        const justName = relativePath.split('/').pop() || rawPath.split('/').pop() || '';
-
-        return {
-          name: justName,
-          sizeInBytes: file.size ?? 0,
-          location: fullLocation,
-          isDirectory: !!file.isFolder,
-          storageType: provider.constructor.name || 'Local',
-          lineCount: null,
-          creationDate: file.modified ? new Date(file.modified).toISOString() : new Date().toISOString()
-        };
-      })
-      .filter((item) => {
-        return item.name !== '.init' && item.name !== '';
-      });
-
-    res.json({
-      bucket: req.instanceId,
-      items: normalizedItems
-    });
-  } catch (err) {
-    res.json({
-      bucket: req.instanceId || '',
-      items: []
-    });
-  }
-});
-
-router.get('/:destinationName/getChunk', async (req, res) => {
-  try {
-    const destinationName = req.params.destinationName;
     const targetValue = getParam(req, 'location');
     if (!targetValue) return res.status(400).json({ error: "Missing required 'location' parameter." });
 
-    const normTarget = normalizeRelativePath(targetValue);
-    const targetPath = normTarget.startsWith(`${destinationName}/`) ? normTarget : `${destinationName}/${normTarget}`;
+    const targetPath = normalizeRelativePath(targetValue);
     const localFilePath = path.join(TEMP_DIR, targetPath);
     if (!fs.existsSync(localFilePath)) return res.status(404).json({ error: 'File not found at specified location.' });
 
@@ -239,12 +184,11 @@ router.get('/:destinationName/getChunk', async (req, res) => {
   }
 });
 
-router.post('/:destinationName/copy', async (req, res) => {
+router.post('/copy', async (req, res) => {
   try {
-    const destinationName = req.params.destinationName;
-    const provider = req.provider;
     const sourceFile = getParam(req, 'sourcePath');
     const destinationFile = getParam(req, 'destinationPath');
+    const provider = req.provider; 
 
     if (!sourceFile || !destinationFile) {
       return res.status(400).json({ error: "Missing 'sourcePath' or 'destinationPath' parameters." });
@@ -252,10 +196,8 @@ router.post('/:destinationName/copy', async (req, res) => {
 
     const normSource = normalizeRelativePath(sourceFile);
     const normDest = normalizeRelativePath(destinationFile);
-    const fullSource = normSource.startsWith(`${destinationName}/`) ? normSource : `${destinationName}/${normSource}`;
-    const fullDest = normDest.startsWith(`${destinationName}/`) ? normDest : `${destinationName}/${normDest}`;
-
-    await provider.copy(fullSource, fullDest);
+    
+    await provider.copy(normSource, normDest);
     res.json({
       name: path.basename(destinationFile),
       sizeInBytes: 0,
@@ -274,9 +216,8 @@ router.post('/:destinationName/copy', async (req, res) => {
   }
 });
 
-router.post('/:destinationName/move', async (req, res) => {
+router.post('/move', async (req, res) => {
   try {
-    const destinationName = req.params.destinationName;
     const provider = req.provider;
     const sourceFile = getParam(req, 'sourcePath');
     const destinationFile = getParam(req, 'destinationPath');
@@ -287,10 +228,8 @@ router.post('/:destinationName/move', async (req, res) => {
 
     const normSource = normalizeRelativePath(sourceFile);
     const normDest = normalizeRelativePath(destinationFile);
-    const fullSource = normSource.startsWith(`${destinationName}/`) ? normSource : `${destinationName}/${normSource}`;
-    const fullDest = normDest.startsWith(`${destinationName}/`) ? normDest : `${destinationName}/${normDest}`;
-
-    await provider.move(fullSource, fullDest);
+    
+    await provider.move(normSource, normDest);
     res.json({
       name: path.basename(destinationFile),
       sizeInBytes: 0,
@@ -309,16 +248,14 @@ router.post('/:destinationName/move', async (req, res) => {
   }
 });
 
-router.get('/:destinationName/get', async (req, res) => {
+router.get('/get', async (req, res) => {
   try {
-    const destinationName = req.params.destinationName;
     const provider = req.provider;
     const targetPath = getParam(req, 'location');
     if (!targetPath) return res.status(400).json({ error: "Missing required 'location' parameter." });
 
     const normTarget = normalizeRelativePath(targetPath);
-    const fullPath = normTarget.startsWith(`${destinationName}/`) ? normTarget : `${destinationName}/${normTarget}`;
-    await provider.download(fullPath, res);
+    await provider.download(normTarget, res);
   } catch (err) {
     const msg = err.message || '';
     if (msg.includes('Not Found') || msg.includes('no such file') || msg.includes('404') || err.code === 'ENOENT') {
@@ -328,9 +265,8 @@ router.get('/:destinationName/get', async (req, res) => {
   }
 });
 
-router.post('/:destinationName/post', async (req, res) => {
+router.post('/post', async (req, res) => {
   try {
-    const destinationName = req.params.destinationName;
     const provider = req.provider;
     const targetLocation = getParam(req, 'location');
     if (!targetLocation) return res.status(400).json({ error: "Missing required 'location' query parameter." });
@@ -338,8 +274,7 @@ router.post('/:destinationName/post', async (req, res) => {
     const filePayload = toBinaryPayload(req);
     if (!filePayload || filePayload.length === 0) return res.status(400).json({ error: 'Empty file payload.' });
 
-    const normTarget = normalizeRelativePath(targetLocation);
-    const targetPath = normTarget.startsWith(`${destinationName}/`) ? normTarget : `${destinationName}/${normTarget}`;
+    const targetPath = normalizeRelativePath(targetLocation);
     fs.mkdirSync(TEMP_DIR, { recursive: true });
     const tempFile = path.join(TEMP_DIR, `${uuidv4()}-${path.basename(targetLocation)}`);
     fs.writeFileSync(tempFile, filePayload);
@@ -362,9 +297,8 @@ router.post('/:destinationName/post', async (req, res) => {
   }
 });
 
-router.post('/:destinationName/postasync', async (req, res) => {
+router.post('/postasync', async (req, res) => {
   try {
-    const destinationName = req.params.destinationName;
     const provider = req.provider;
     const targetLocation = getParam(req, 'location');
     if (!targetLocation) return res.status(400).json({ error: "Missing required 'location' query parameter." });
@@ -372,8 +306,7 @@ router.post('/:destinationName/postasync', async (req, res) => {
     const filePayload = toBinaryPayload(req);
     if (!filePayload || filePayload.length === 0) return res.status(400).json({ error: 'Empty file payload.' });
 
-    const normTarget = normalizeRelativePath(targetLocation);
-    const targetPath = normTarget.startsWith(`${destinationName}/`) ? normTarget : `${destinationName}/${normTarget}`;
+    const targetPath = normalizeRelativePath(targetLocation);
     fs.mkdirSync(TEMP_DIR, { recursive: true });
     const tempFile = path.join(TEMP_DIR, `${uuidv4()}-${path.basename(targetLocation)}`);
     fs.writeFileSync(tempFile, filePayload);
@@ -386,15 +319,13 @@ router.post('/:destinationName/postasync', async (req, res) => {
   }
 });
 
-router.delete('/:destinationName/delete', async (req, res) => {
+router.delete('/delete', async (req, res) => {
   try {
-    const destinationName = req.params.destinationName;
     const provider = req.provider;
     const targetPath = getParam(req, 'location');
     if (!targetPath) return res.status(400).json({ error: "Missing required 'location' parameter." });
 
-    const normTarget = normalizeRelativePath(targetPath);
-    const fullPath = normTarget.startsWith(`${destinationName}/`) ? normTarget : `${destinationName}/${normTarget}`;
+    const fullPath = normalizeRelativePath(targetPath);
     try {
       await provider.delete(fullPath);
     } catch (delErr) {
@@ -403,29 +334,6 @@ router.delete('/:destinationName/delete', async (req, res) => {
     res.status(200).send();
   } catch (err) {
     res.status(200).send();
-  }
-});
-
-router.post('/:destinationName/setStorage', async (req, res) => {
-  try {
-    const destinationName = req.params.destinationName;
-    const targetLocation = getParam(req, 'location');
-    const storageType = req.query?.storage || 'Archive';
-    if (!targetLocation) return res.status(400).json({ error: "Missing required 'location' parameter." });
-
-    const normTarget = normalizeRelativePath(targetLocation);
-    const targetPath = normTarget.startsWith(`${destinationName}/`) ? normTarget : `${destinationName}/${normTarget}`;
-    res.json({
-      name: path.basename(targetLocation),
-      sizeInBytes: 0,
-      location: targetPath,
-      isDirectory: false,
-      storageType,
-      lineCount: null,
-      creationDate: new Date().toISOString()
-    });
-  } catch (err) {
-    res.status(400).json({ error: err.message || 'setStorage operation failed.' });
   }
 });
 
