@@ -39,7 +39,11 @@ const normalizeRelativePath = (value) => {
 };
 
 const getParam = (req, key) => {
-  const val = req.query?.[key] ?? req.body?.[key] ?? req.params?.[key] ?? req.headers?.[key];
+  let val = req.query?.[key] ?? req.body?.[key] ?? req.params?.[key] ?? req.headers?.[key];
+  if(!val){
+    key = key.toLowerCase();
+    val = req.query?.[key] ?? req.body?.[key] ?? req.params?.[key] ?? req.headers?.[key];
+  }
   return typeof val === 'string' ? val.trim() : '';
 };
 
@@ -265,7 +269,7 @@ router.post('/copy', async (req, res) => {
     res.json({
       name: path.basename(destinationFile),
       sizeInBytes: 0,
-      location: fullDest,
+      location: normDest,
       isDirectory: false,
       storageType: provider.constructor.name || 'Local',
       lineCount: null,
@@ -297,7 +301,7 @@ router.post('/move', async (req, res) => {
     res.json({
       name: path.basename(destinationFile),
       sizeInBytes: 0,
-      location: fullDest,
+      location: normDest,
       isDirectory: false,
       storageType: provider.constructor.name || 'Local',
       lineCount: null,
