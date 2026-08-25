@@ -206,9 +206,114 @@
   color: var(--text-primary) !important;
 }
 
-/* ==========================================================================
-   Section Headers: Parameters, Request Body & Responses (100% Uniform Styling)
-   ========================================================================== */
+.swagger-ui .curl-command,
+.swagger-ui .request-url {
+  background: var(--code-bg, #0f172a) !important;
+  border: 1px solid var(--border-color, #334155) !important;
+  border-radius: 8px !important;
+  margin: 0.75rem 0 1rem 0 !important;
+  padding: 0.75rem 1rem !important;
+}
+
+.swagger-ui .curl-command h4,
+.swagger-ui .curl-command h5,
+.swagger-ui .request-url h4,
+.swagger-ui .request-url h5,
+.swagger-ui .responses-wrapper h4,
+.swagger-ui .responses-wrapper h5,
+.swagger-ui .responses-inner h4,
+.swagger-ui .responses-inner h5,
+.swagger-ui h4.opblock-title,
+.swagger-ui h5.opblock-title {
+  color: var(--text-primary) !important;
+  font-family: var(--font-sans) !important;
+  font-weight: 700 !important;
+  font-size: 0.95rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.swagger-ui .curl-command pre,
+.swagger-ui .request-url pre {
+  background: transparent !important;
+  color: var(--code-text, #38bdf8) !important;
+  font-family: var(--font-mono) !important;
+  font-size: 0.88rem !important;
+  line-height: 1.5 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  white-space: pre-wrap !important;
+  word-break: break-all !important;
+  border: none !important;
+}
+
+.swagger-ui .curl-command .copy-to-clipboard,
+.swagger-ui .request-url .copy-to-clipboard {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 4px !important;
+  right: 10px !important;
+  top: 10px !important;
+}
+
+.swagger-ui .responses-wrapper,
+.swagger-ui .responses-inner {
+  background: transparent !important;
+  padding: 0.5rem 0 !important;
+}
+
+.swagger-ui table.responses-table {
+  width: 100% !important;
+  margin-top: 0.5rem !important;
+  border-collapse: collapse !important;
+}
+
+.swagger-ui table.responses-table thead tr th {
+  color: var(--text-primary) !important;
+  font-family: var(--font-sans) !important;
+  font-weight: 700 !important;
+  font-size: 0.85rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  padding: 0.5rem !important;
+}
+
+.swagger-ui table.responses-table tbody tr td {
+  color: var(--text-primary) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  font-family: var(--font-sans) !important;
+  padding: 0.75rem 0.5rem !important;
+  vertical-align: top !important;
+}
+
+.swagger-ui .response-col_status {
+  font-family: var(--font-mono) !important;
+  font-weight: 700 !important;
+  color: var(--accent-primary, #6366f1) !important;
+}
+
+.swagger-ui .response-col_description,
+.swagger-ui .response-col_description p {
+  color: var(--text-secondary) !important;
+  font-family: var(--font-sans) !important;
+}
+
+.swagger-ui .response-col_description pre,
+.swagger-ui .response-col_description code {
+  background: var(--code-bg, #0f172a) !important;
+  color: var(--code-text, #e2e8f0) !important;
+  border-radius: 6px !important;
+  border: 1px solid var(--border-color) !important;
+  font-family: var(--font-mono) !important;
+  padding: 0.5rem 0.75rem !important;
+}
+
+/* Delete Operation Specific Accents */
+.swagger-ui .opblock.opblock-delete .opblock-section-header,
+.swagger-ui .opblock.opblock-delete .responses-header {
+  background: rgba(249, 62, 62, 0.08) !important;
+  border-color: rgba(249, 62, 62, 0.25) !important;
+}
+
 .swagger-ui .opblock-section-header,
 .swagger-ui .responses-header {
   background: var(--bg-card, rgba(255, 255, 255, 0.03)) !important;
@@ -246,9 +351,6 @@
   font-size: 0.9rem !important;
 }
 
-/* ==========================================================================
-   Tabs Styling: "Example Value" | "Schema" (High Visibility & Theme Matching)
-   ========================================================================== */
 .swagger-ui ul.tab,
 .swagger-ui .tab {
   display: flex !important;
@@ -645,9 +747,6 @@ body:has(.dialog-ux) {
   display: none;
 }
 
-/* ==========================================================================
-   Schemas & Model Box Comprehensive Theme Overrides
-   ========================================================================== */
 .swagger-ui section.models {
   border: 1px solid var(--border-color) !important;
   border-radius: 12px !important;
