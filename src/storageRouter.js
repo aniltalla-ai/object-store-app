@@ -39,7 +39,11 @@ const normalizeRelativePath = (value) => {
 };
 
 const getParam = (req, key) => {
-  const val = req.query?.[key] ?? req.body?.[key] ?? req.params?.[key] ?? req.headers?.[key];
+  let val = req.query?.[key] ?? req.body?.[key] ?? req.params?.[key] ?? req.headers?.[key];
+  if(!val){
+    key = key.toLowerCase();
+    val = req.query?.[key] ?? req.body?.[key] ?? req.params?.[key] ?? req.headers?.[key];
+  }
   return typeof val === 'string' ? val.trim() : '';
 };
 
@@ -86,10 +90,12 @@ router.use(async (req, res, next) => {
 router.get('/list', async (req, res) => {
   try {
     const provider = req.provider;
-    const subfolder = getParam(req, 'StartIn') || '';
-    const normalizedSub = normalizeRelativePath(subfolder);
-    const recursiveVal = getParam(req, 'Recursive').toLowerCase();
-    const isRecursive = recursiveVal === '' ? true : ['true', '1', 'yes'].includes(recursiveVal);
+    const startWith = getParam(req, 'startIn') || '';
+    const normalizedSub = normalizeRelativePath(startWith);
+    const recursiveVal = getParam(req, 'recursive').toLowerCase();
+    const isRecursive = ['true'].includes(recursiveVal);
+    const foldersOnlyVal = getParam(req, 'foldersOnly').toLowerCase();
+    const isFoldersOnly = ['true'].includes(foldersOnlyVal);
 
     let files = [];
     try {
@@ -99,9 +105,10 @@ router.get('/list', async (req, res) => {
     }
 
     const itemsMap = new Map();
-
+    const folderLocations = new Set();
     (files || []).forEach((file) => {
       let rawPath = file.name?.replace(/\\/g, '/') || '';
+      if(!rawPath) return;
       let isDir = !!file.isFolder || rawPath.endsWith('/') || rawPath.endsWith('.init');
 
       if (rawPath.endsWith('/.init')) {
@@ -112,24 +119,25 @@ router.get('/list', async (req, res) => {
         return;
       }
 
-      if (isDir && rawPath) {
-        const justName = rawPath.split('/').pop() || '';
-        if (justName) {
+      if(!rawPath) return;
+
+      const pathParts = rawPath.split('/');
+      pathParts.pop();
+      let currentParent = '';
+      for(const part of pathParts){
+        if(!part) continue;
+        currentParent = currentParent ? `${currentParent}/${part}` : part;
+        folderLocations.add(currentParent);
+      }
+
+      if (isDir) {
+        folderLocations.add(rawPath);
+      }
+      else {  
+        const fileName = rawPath.split('/').pop() || '';
+        if (fileName && fileName !== '.init') {
           itemsMap.set(rawPath, {
-            name: justName,
-            sizeInBytes: 0,
-            location: rawPath,
-            isDirectory: true,
-            storageType: provider.constructor.name || 'Local',
-            lineCount: null,
-            creationDate: file.modified ? new Date(file.modified).toISOString() : new Date().toISOString()
-          });
-        }
-      } else if (rawPath) {
-        const justName = rawPath.split('/').pop() || '';
-        if (justName && justName !== '.init') {
-          itemsMap.set(rawPath, {
-            name: justName,
+            name: fileName,
             sizeInBytes: file.size ?? 0,
             location: rawPath,
             isDirectory: false,
@@ -138,45 +146,47 @@ router.get('/list', async (req, res) => {
             creationDate: file.modified ? new Date(file.modified).toISOString() : new Date().toISOString()
           });
         }
-
-        const pathParts = rawPath.split('/');
-        pathParts.pop();
-        let currentParent = '';
-        for (const part of pathParts) {
-          if (!part) continue;
-          currentParent = currentParent ? `${currentParent}/${part}` : part;
-          if (!itemsMap.has(currentParent)) {
-            itemsMap.set(currentParent, {
-              name: part,
-              sizeInBytes: 0,
-              location: currentParent,
-              isDirectory: true,
-              storageType: provider.constructor.name || 'Local',
-              lineCount: null,
-              creationDate: file.modified ? new Date(file.modified).toISOString() : new Date().toISOString()
-            });
-          }
-        }
       }
     });
 
-    let normalizedItems = Array.from(itemsMap.values());
+    folderLocations.forEach((folderPath) => {
+      if(!folderPath) return;
+      const fileName = folderPath.split('/').pop() || '';
+      if(!fileName) return;
+      itemsMap.set(folderPath, {
+        name: fileName,
+        sizeInBytes: 0,
+        location: folderPath,
+        isDirectory: true,
+        storageType: provider.constructor.name || 'Local',
+        lineCount: null,
+        createDate: new Date().toISOString()
+      })
+    });
 
-    if (!isRecursive) {
-      const prefix = normalizedSub ? `${normalizedSub}/` : '';
-      normalizedItems = normalizedItems.filter((item) => {
+    let items = Array.from(itemsMap.values());
+    
+    if(isFoldersOnly){
+      items = items.filter(item => item.isDirectory);
+    }
+
+      const prefix = normalizedSub || '';
+      items = items.filter((item) => {
         if (!normalizedSub) {
           return !item.location.includes('/');
         }
         if (!item.location.startsWith(prefix)) return false;
-        const relative = item.location.substring(prefix.length);
+        if(isRecursive){
+          return true;
+        }
+        const relative = item.location.substring(prefix.length + (prefix.endsWith('/') ? 0 : 1));
         return relative.length > 0 && !relative.includes('/');
       });
-    }
+    
 
     res.json({
       bucket: req.instanceId,
-      items: normalizedItems
+      items: items
     });
   } catch (err) {
     res.json({
@@ -193,13 +203,12 @@ router.post('/createPath', async (req, res) => {
     if (!customPath) return res.status(400).json({ error: "Missing required 'path' parameter." });
 
     const normalizedPath = normalizeRelativePath(customPath);
-    const targetedFolderStructure = `${normalizedPath}`;
     await provider.createPath([normalizedPath]);
 
     res.status(200).json({
-      name: normalizedPath,
+      name: path.basename(normalizedPath),
       sizeInBytes: 0,
-      location: targetedFolderStructure,
+      location: normalizedPath,
       isDirectory: true,
       storageType: provider.constructor.name || 'Local',
       lineCount: null,
@@ -260,7 +269,7 @@ router.post('/copy', async (req, res) => {
     res.json({
       name: path.basename(destinationFile),
       sizeInBytes: 0,
-      location: fullDest,
+      location: normDest,
       isDirectory: false,
       storageType: provider.constructor.name || 'Local',
       lineCount: null,
@@ -292,7 +301,7 @@ router.post('/move', async (req, res) => {
     res.json({
       name: path.basename(destinationFile),
       sizeInBytes: 0,
-      location: fullDest,
+      location: normDest,
       isDirectory: false,
       storageType: provider.constructor.name || 'Local',
       lineCount: null,

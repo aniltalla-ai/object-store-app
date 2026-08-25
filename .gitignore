@@ -24,3 +24,5 @@ tmp_storage_chunks/
 *.swo
 
 default-env.json
+xs-security.json
+xs-Security.js

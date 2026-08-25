@@ -16,7 +16,7 @@
     }
   ],
   "authorities": [
-    "$XSAPPNAME.GTMS_ObjectStore"
+    "$XSAPPNAME.<<ObjectStoreInstance>>"
   ],
   "role-templates": [
     {

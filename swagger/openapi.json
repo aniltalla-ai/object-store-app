@@ -25,20 +25,28 @@
         "summary": "List files and folders in object store without destination in path",
         "parameters": [
           {
-            "name": "StartIn",
+            "name": "startIn",
             "in": "query",
             "schema": {
               "type": "string"
             },
-            "description": "Subfolder prefix to search inside"
+            "description": "Prefix to search with name"
           },
           {
-            "name": "Recursive",
+            "name": "recursive",
             "in": "query",
             "schema": {
               "type": "boolean"
             },
             "description": "Recursive listing flag (set to false for non-recursive / folder-level listing)"
+          },
+          {
+            "name": "foldersOnly",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "To Get Only Folder when it set to true"
           }
         ],
         "responses": {
