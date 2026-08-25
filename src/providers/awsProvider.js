@@ -46,8 +46,12 @@ class AwsProvider {
     await this.delete(source);
   }
 
-  async download(targetPath, res) {
-    const data = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: targetPath }));
+  async download(targetPath, res, options = {}) {
+    const params = { Bucket: this.bucket, Key: targetPath };
+    if (options.start !== undefined && options.end !== undefined) {
+      params.Range = `bytes=${options.start}-${options.end}`;
+    }
+    const data = await this.client.send(new GetObjectCommand(params));
     data.Body.pipe(res);
   }
 

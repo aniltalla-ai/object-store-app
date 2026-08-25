@@ -2,6 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { Writable } = require('stream');
 const { v4: uuidv4 } = require('uuid');
 const StorageAdapter = require('./storageAdapter');
 const xsuaaAuth = require('./security');
@@ -13,26 +14,6 @@ if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });
 
 const activeUploads = {};
 
-// Fallback raw body capturing middleware for requests where express body parsers did not run
-router.use((req, res, next) => {
-  if (req.body && (Buffer.isBuffer(req.body) || typeof req.body === 'string' || Object.keys(req.body).length > 0)) {
-    return next();
-  }
-  if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
-    const chunks = [];
-    req.on('data', (chunk) => chunks.push(chunk));
-    req.on('end', () => {
-      if (chunks.length > 0) {
-        req.rawBody = Buffer.concat(chunks);
-      }
-      next();
-    });
-    req.on('error', (err) => next(err));
-  } else {
-    next();
-  }
-});
-
 const normalizeRelativePath = (value) => {
   if (typeof value !== 'string') return '';
   return value.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '').replace(/\/+/g, '/');
@@ -40,7 +21,7 @@ const normalizeRelativePath = (value) => {
 
 const getParam = (req, key) => {
   let val = req.query?.[key] ?? req.body?.[key] ?? req.params?.[key] ?? req.headers?.[key];
-  if(!val){
+  if (!val) {
     key = key.toLowerCase();
     val = req.query?.[key] ?? req.body?.[key] ?? req.params?.[key] ?? req.headers?.[key];
   }
@@ -58,22 +39,106 @@ const getUploadSession = (idOrName) => {
 const toBinaryPayload = (req) => {
   if (Buffer.isBuffer(req.body)) return req.body;
   if (typeof req.body === 'string') return Buffer.from(req.body);
-  if (Buffer.isBuffer(req.rawBody)) return req.rawBody;
   if (req.body && typeof req.body === 'object') {
     const fileValue = req.body.file || req.body.data || req.body.content;
     if (Buffer.isBuffer(fileValue)) return fileValue;
     if (typeof fileValue === 'string') return Buffer.from(fileValue);
   }
-  if (req.files && req.files.file) {
-    const maybeFile = req.files.file.data || req.files.file.buffer || req.files.file;
-    if (Buffer.isBuffer(maybeFile)) return maybeFile;
-  }
   return Buffer.alloc(0);
+};
+
+const ensureBinaryPayload = (req, res, next) => {
+  if (Buffer.isBuffer(req.body) || (req.body && Object.keys(req.body).length > 0)) {
+    return next();
+  }
+  const chunks = [];
+  req.on('data', (chunk) => chunks.push(chunk));
+  req.on('end', () => {
+    if (chunks.length > 0) {
+      req.body = Buffer.concat(chunks);
+    }
+    next();
+  });
+  req.on('error', (err) => next(err));
+};
+
+const applyChunking = (payload, query) => {
+  const chunkType = (query?.chunkType || 'Binary').toLowerCase();
+  const chunkSize = Number(query?.chunkSize || 0);
+  const chunkPart = Number(query?.chunkPart || 0);
+  const startLine = Number(query?.startLine || 0);
+
+  if (chunkType === 'line') {
+    const lines = payload.toString('utf8').split(/\r?\n/);
+    const startIndex = Math.max(0, startLine);
+    const endIndex = chunkSize > 0 ? startIndex + chunkSize : lines.length;
+    return Buffer.from(lines.slice(startIndex, endIndex).join('\n'));
+  } else if (chunkSize > 0 && chunkPart > 0) {
+    const startIndex = (chunkPart - 1) * chunkSize;
+    return payload.subarray(startIndex, startIndex + chunkSize);
+  } else if (chunkSize > 0) {
+    return payload.subarray(0, chunkSize);
+  }
+  return payload;
+};
+
+const createUploadSession = (fileName, initialBuffer = Buffer.alloc(0)) => {
+  fs.mkdirSync(TEMP_DIR, { recursive: true });
+  const uploadId = uuidv4();
+  const filePath = path.join(TEMP_DIR, uploadId);
+  
+  fs.writeFileSync(filePath, initialBuffer);
+  const now = new Date().toISOString();
+  
+  const session = {
+    uploadId,
+    fileName: path.basename(fileName),
+    path: filePath,
+    status: 'InProgress',
+    creationDate: now,
+    updateDate: now
+  };
+
+  activeUploads[uploadId] = session;
+  activeUploads[session.fileName] = session;
+  return session;
+};
+
+const appendToSession = (session, dataBuffer) => {
+  if (!fs.existsSync(session.path)) throw new Error('Upload session file missing.');
+  fs.appendFileSync(session.path, dataBuffer);
+  session.updateDate = new Date().toISOString();
+  return fs.statSync(session.path).size;
+};
+
+const finalizeSessionUpload = async (session, targetPath, provider) => {
+  if (!fs.existsSync(session.path)) throw new Error('Upload session file missing.');
+  
+  const stat = fs.statSync(session.path);
+  const fileSize = stat.size;
+
+  const readStream = fs.createReadStream(session.path);
+  readStream.on('error', () => {});
+  
+  await provider.uploadStream(targetPath, readStream, session.path);
+
+  if (fs.existsSync(session.path)) fs.unlinkSync(session.path);
+  delete activeUploads[session.uploadId];
+  delete activeUploads[session.fileName];
+
+  return fileSize;
+};
+
+const cleanupSession = (session) => {
+  if (session && fs.existsSync(session.path)) fs.unlinkSync(session.path);
+  if (session) {
+    delete activeUploads[session.uploadId];
+    delete activeUploads[session.fileName];
+  }
 };
 
 router.use(xsuaaAuth);
 
-// Attach Storage Provider in ONE single place for all routes
 router.use(async (req, res, next) => {
   try {
     const credentials = req.credentials || null;
@@ -108,7 +173,7 @@ router.get('/list', async (req, res) => {
     const folderLocations = new Set();
     (files || []).forEach((file) => {
       let rawPath = file.name?.replace(/\\/g, '/') || '';
-      if(!rawPath) return;
+      if (!rawPath) return;
       let isDir = !!file.isFolder || rawPath.endsWith('/') || rawPath.endsWith('.init');
 
       if (rawPath.endsWith('/.init')) {
@@ -119,21 +184,20 @@ router.get('/list', async (req, res) => {
         return;
       }
 
-      if(!rawPath) return;
+      if (!rawPath) return;
 
       const pathParts = rawPath.split('/');
       pathParts.pop();
       let currentParent = '';
-      for(const part of pathParts){
-        if(!part) continue;
+      for (const part of pathParts) {
+        if (!part) continue;
         currentParent = currentParent ? `${currentParent}/${part}` : part;
         folderLocations.add(currentParent);
       }
 
       if (isDir) {
         folderLocations.add(rawPath);
-      }
-      else {  
+      } else {
         const fileName = rawPath.split('/').pop() || '';
         if (fileName && fileName !== '.init') {
           itemsMap.set(rawPath, {
@@ -150,9 +214,9 @@ router.get('/list', async (req, res) => {
     });
 
     folderLocations.forEach((folderPath) => {
-      if(!folderPath) return;
+      if (!folderPath) return;
       const fileName = folderPath.split('/').pop() || '';
-      if(!fileName) return;
+      if (!fileName) return;
       itemsMap.set(folderPath, {
         name: fileName,
         sizeInBytes: 0,
@@ -161,38 +225,35 @@ router.get('/list', async (req, res) => {
         storageType: provider.constructor.name || 'Local',
         lineCount: null,
         createDate: new Date().toISOString()
-      })
+      });
     });
 
     let items = Array.from(itemsMap.values());
     
-    if(isFoldersOnly){
+    if (isFoldersOnly) {
       items = items.filter(item => item.isDirectory);
     }
 
-      const prefix = normalizedSub || '';
-      items = items.filter((item) => {
-        if (!normalizedSub) {
-          return !item.location.includes('/');
-        }
-        if (!item.location.startsWith(prefix)) return false;
-        if(isRecursive){
-          return true;
-        }
-        const relative = item.location.substring(prefix.length + (prefix.endsWith('/') ? 0 : 1));
-        return relative.length > 0 && !relative.includes('/');
-      });
-    
+    const prefix = normalizedSub || '';
+    items = items.filter((item) => {
+      if (prefix && item.location === prefix) {
+        return !item.isDirectory;
+      }
 
-    res.json({
-      bucket: req.instanceId,
-      items: items
+      if (!normalizedSub) {
+        return !item.location.includes('/');
+      }
+      if (!item.location.startsWith(prefix)) return false;
+      if (isRecursive) return true;
+      
+      const prefixClean = prefix.endsWith('/') ? prefix : prefix + '/';
+      const relative = item.location.substring(prefixClean.length);
+      return !relative.includes('/');
     });
+
+    res.json({ bucket: req.instanceId, items });
   } catch (err) {
-    res.json({
-      bucket: req.instanceId || '',
-      items: []
-    });
+    res.json({ bucket: req.instanceId || '', items: [] });
   }
 });
 
@@ -219,36 +280,66 @@ router.post('/createPath', async (req, res) => {
   }
 });
 
+// router.get('/getChunk', async (req, res) => {
+//   try {
+//     const provider = req.provider;
+//     const targetValue = getParam(req, 'location');
+//     if (!targetValue) return res.status(400).json({ error: "Missing required 'location' parameter." });
+
+//     const targetPath = normalizeRelativePath(targetValue);
+//     const chunks = [];
+//     const writableStream = new Writable({
+//       write(chunk, encoding, callback) {
+//         chunks.push(chunk);
+//         callback();
+//       }
+//     });
+
+//     await new Promise((resolve, reject) => {
+//       writableStream.on('finish', resolve);
+//       writableStream.on('error', reject);
+//       Promise.resolve(provider.download(targetPath, writableStream)).catch(reject);
+//     });
+
+//     const payload = Buffer.concat(chunks);
+//     if (!payload || payload.length === 0) {
+//       return res.status(404).json({ error: 'File not found at specified location.' });
+//     }
+
+//     const output = applyChunking(payload, req.query);
+//     res.type('application/octet-stream').send(output);
+//   } catch (err) {
+//     res.status(404).json({ error: 'File not found at specified location.' });
+//   }
+// });
+
 router.get('/getChunk', async (req, res) => {
   try {
+    const provider = req.provider;
     const targetValue = getParam(req, 'location');
     if (!targetValue) return res.status(400).json({ error: "Missing required 'location' parameter." });
 
     const targetPath = normalizeRelativePath(targetValue);
-    const localFilePath = path.join(TEMP_DIR, targetPath);
-    if (!fs.existsSync(localFilePath)) return res.status(404).json({ error: 'File not found at specified location.' });
+    
+    // Parse query options for range mapping
+    const chunkSize = Number(getParam(req, 'chunkSize') || 0);
+    const chunkPart = Number(getParam(req, 'chunkPart') || 0);
+    const chunkType = (getParam(req, 'chunkType') || 'Binary').toLowerCase();
 
-    let payload = fs.readFileSync(localFilePath);
-    const chunkType = (req.query?.chunkType || 'Binary').toLowerCase();
-    const chunkSize = Number(req.query?.chunkSize || 0);
-    const chunkPart = Number(req.query?.chunkPart || 0);
-    const startLine = Number(req.query?.startLine || 0);
-
-    if (chunkType === 'line') {
-      const lines = payload.toString('utf8').split(/\r?\n/);
-      const startIndex = Math.max(0, startLine);
-      const endIndex = chunkSize > 0 ? startIndex + chunkSize : lines.length;
-      payload = Buffer.from(lines.slice(startIndex, endIndex).join('\n'));
-    } else if (chunkSize > 0 && chunkPart > 0) {
-      const startIndex = (chunkPart - 1) * chunkSize;
-      payload = payload.subarray(startIndex, startIndex + chunkSize);
-    } else if (chunkSize > 0) {
-      payload = payload.subarray(0, chunkSize);
+    let options = {};
+    if (chunkType === 'binary' && chunkSize > 0 && chunkPart > 0) {
+      const start = (chunkPart - 1) * chunkSize;
+      const end = start + chunkSize - 1;
+      options = { start, end }; // e.g., bytes=0-1023
+    } else if (chunkType === 'binary' && chunkSize > 0) {
+      options = { start: 0, end: chunkSize - 1 };
     }
 
-    res.type('application/octet-stream').send(payload);
+    res.type('application/octet-stream');
+    // Pass options directly to cloud provider range downloader
+    await provider.download(targetPath, res, options);
   } catch (err) {
-    res.status(404).json({ error: 'File not found at specified location.' });
+    res.status(404).json({ error: 'File not found or range invalid.' });
   }
 });
 
@@ -333,57 +424,66 @@ router.get('/get', async (req, res) => {
   }
 });
 
-router.post('/post', async (req, res) => {
+router.post('/post', ensureBinaryPayload, async (req, res) => {
   try {
-    const provider = req.provider;
     const targetLocation = getParam(req, 'location');
-    if (!targetLocation) return res.status(400).json({ error: "Missing required 'location' query parameter." });
+    if (!targetLocation) return res.status(400).json({ error: "Missing required 'location' parameter." });
 
     const filePayload = toBinaryPayload(req);
     if (!filePayload || filePayload.length === 0) return res.status(400).json({ error: 'Empty file payload.' });
 
     const targetPath = normalizeRelativePath(targetLocation);
-    fs.mkdirSync(TEMP_DIR, { recursive: true });
-    const tempFile = path.join(TEMP_DIR, `${uuidv4()}-${path.basename(targetLocation)}`);
-    fs.writeFileSync(tempFile, filePayload);
-    const readStream = fs.createReadStream(tempFile);
-    readStream.on('error', () => { });
-    await provider.uploadStream(targetPath, readStream, tempFile);
-    fs.existsSync(tempFile) && fs.unlinkSync(tempFile);
+    const session = createUploadSession(targetLocation, filePayload);
+    
+    const fileSize = await finalizeSessionUpload(session, targetPath, req.provider);
 
     res.status(200).json({
-      name: path.basename(targetLocation),
-      sizeInBytes: filePayload.length,
+      name: session.fileName,
+      sizeInBytes: fileSize,
       location: targetPath,
       isDirectory: false,
-      storageType: provider.constructor.name || 'Local',
+      storageType: req.provider.constructor.name || 'Local',
       lineCount: null,
-      creationDate: new Date().toISOString()
+      creationDate: session.creationDate
     });
   } catch (err) {
-    res.status(400).json({ error: err.message || 'Upload operation failed.' });
+    res.status(400).json({ error: err.message || 'Upload failed.' });
   }
 });
 
-router.post('/postasync', async (req, res) => {
+router.post('/postasync', ensureBinaryPayload, async (req, res) => {
   try {
-    const provider = req.provider;
     const targetLocation = getParam(req, 'location');
-    if (!targetLocation) return res.status(400).json({ error: "Missing required 'location' query parameter." });
+    if (!targetLocation) return res.status(400).json({ error: "Missing required 'location' parameter." });
 
     const filePayload = toBinaryPayload(req);
     if (!filePayload || filePayload.length === 0) return res.status(400).json({ error: 'Empty file payload.' });
 
     const targetPath = normalizeRelativePath(targetLocation);
-    fs.mkdirSync(TEMP_DIR, { recursive: true });
-    const tempFile = path.join(TEMP_DIR, `${uuidv4()}-${path.basename(targetLocation)}`);
-    fs.writeFileSync(tempFile, filePayload);
-    await provider.uploadStream(targetPath, fs.createReadStream(tempFile), tempFile);
-    fs.existsSync(tempFile) && fs.unlinkSync(tempFile);
+    const session = createUploadSession(targetLocation, filePayload);
+    session.destination = targetPath;
 
-    res.status(202).send();
+    res.status(202).json({
+      id: session.uploadId,
+      fileName: session.fileName,
+      status: 'InProgress',
+      message: 'Async upload started.'
+    });
+
+    setImmediate(async () => {
+      try {
+        await finalizeSessionUpload(session, targetPath, req.provider);
+        session.status = 'Completed';
+        session.updateDate = new Date().toISOString();
+      } catch (bgErr) {
+        session.status = 'Failed';
+        session.statusMessage = bgErr.message;
+        session.updateDate = new Date().toISOString();
+        cleanupSession(session);
+      }
+    });
   } catch (err) {
-    res.status(400).json({ error: err.message || 'Async upload operation failed.' });
+    res.status(400).json({ error: err.message || 'Async upload failed.' });
   }
 });
 
@@ -397,7 +497,6 @@ router.delete('/delete', async (req, res) => {
     try {
       await provider.delete(fullPath);
     } catch (delErr) {
-      // Idempotent delete - swallow if file non-existent
     }
     res.status(200).send();
   } catch (err) {
@@ -435,23 +534,7 @@ router.get('/getWritable/:fileName', (req, res) => {
     }
 
     const payload = fs.readFileSync(session.path);
-    const chunkType = (req.query?.chunkType || 'Binary').toLowerCase();
-    const chunkSize = Number(req.query?.chunkSize || 0);
-    const chunkPart = Number(req.query?.chunkPart || 0);
-    const startLine = Number(req.query?.startLine || 0);
-
-    let output = payload;
-    if (chunkType === 'line') {
-      const lines = payload.toString('utf8').split(/\r?\n/);
-      const start = Math.max(0, startLine);
-      const end = chunkSize > 0 ? start + chunkSize : lines.length;
-      output = Buffer.from(lines.slice(start, end).join('\n'));
-    } else if (chunkSize > 0 && chunkPart > 0) {
-      const start = (chunkPart - 1) * chunkSize;
-      output = payload.subarray(start, start + chunkSize);
-    } else if (chunkSize > 0) {
-      output = payload.subarray(0, chunkSize);
-    }
+    const output = applyChunking(payload, req.query);
 
     res.type('application/octet-stream').send(output);
   } catch (err) {
@@ -459,57 +542,34 @@ router.get('/getWritable/:fileName', (req, res) => {
   }
 });
 
-router.post('/writeStart/:fileName', (req, res) => {
+router.post('/writeStart/:fileName', ensureBinaryPayload, (req, res) => {
   try {
-    fs.mkdirSync(TEMP_DIR, { recursive: true });
-
-    const uploadId = uuidv4();
-    const filePath = path.join(TEMP_DIR, uploadId);
     const dataBuffer = toBinaryPayload(req);
-
-    fs.writeFileSync(filePath, dataBuffer);
-    const now = new Date().toISOString();
-    const session = {
-      uploadId,
-      fileName: req.params.fileName,
-      path: filePath,
-      status: 'InProgress',
-      creationDate: now,
-      updateDate: now
-    };
-    activeUploads[uploadId] = session;
-    activeUploads[req.params.fileName] = session;
+    const session = createUploadSession(req.params.fileName, dataBuffer);
 
     res.status(200).json({
-      name: req.params.fileName,
+      name: session.fileName,
       sizeInBytes: dataBuffer.length,
       lineCount: null,
-      creationDate: now,
-      updateDate: now
+      creationDate: session.creationDate,
+      updateDate: session.updateDate
     });
   } catch (err) {
     res.status(400).json({ error: `Upload start failed: ${err.message}` });
   }
 });
 
-const handleChunkWrite = (req, res) => {
+router.post('/writeChunk/:fileName', ensureBinaryPayload, (req, res) => {
   const session = getUploadSession(req.params.fileName);
   if (!session) return res.status(404).json({ error: 'Missing session context mapping.' });
-  if (!fs.existsSync(session.path)) {
-    delete activeUploads[req.params.fileName];
-    activeUploads[session.fileName] && delete activeUploads[session.fileName];
-    return res.status(404).json({ error: 'Upload chunk file is missing. Please restart the upload.' });
-  }
 
   try {
     const dataBuffer = toBinaryPayload(req);
-    fs.appendFileSync(session.path, dataBuffer);
-    const stat = fs.statSync(session.path);
-    session.updateDate = new Date().toISOString();
+    const size = appendToSession(session, dataBuffer);
 
     res.json({
       name: session.fileName,
-      sizeInBytes: stat.size,
+      sizeInBytes: size,
       lineCount: null,
       creationDate: session.creationDate,
       updateDate: session.updateDate
@@ -517,72 +577,46 @@ const handleChunkWrite = (req, res) => {
   } catch (err) {
     res.status(400).json({ error: `Upload append failed: ${err.message}` });
   }
-};
-
-router.post('/writeChunk/:fileName', handleChunkWrite);
+});
 
 router.post('/writeComplete/:fileName', async (req, res) => {
   try {
     const session = getUploadSession(req.params.fileName);
     if (!session) return res.status(404).json({ error: 'Upload session context expired or missing.' });
-    if (!fs.existsSync(session.path)) {
-      delete activeUploads[req.params.fileName];
-      activeUploads[session.fileName] && delete activeUploads[session.fileName];
-      return res.status(404).json({ error: 'Upload chunk file is missing. Please restart the upload.' });
-    }
 
     const rawDest = getParam(req, 'destination') || '';
     const rawStoragePath = getParam(req, 'storagePath') || '';
-
     let instanceKey = req.user?.attr?.object_store_instance?.[0];
     let folderPath = '';
 
     if (rawDest) {
       const parts = normalizeRelativePath(rawDest).split('/');
       instanceKey = parts[0] || instanceKey;
-      if (parts.length > 1) {
-        folderPath = parts.slice(1).join('/');
-      }
+      if (parts.length > 1) folderPath = parts.slice(1).join('/');
     }
 
     if (rawStoragePath) {
       const normalizedStorage = normalizeRelativePath(rawStoragePath);
       if (instanceKey && normalizedStorage.startsWith(`${instanceKey}/`)) {
         folderPath = normalizedStorage.substring(instanceKey.length + 1);
-      } else if (folderPath) {
-        folderPath = `${folderPath}/${normalizedStorage}`;
       } else {
-        folderPath = normalizedStorage;
+        folderPath = folderPath ? `${folderPath}/${normalizedStorage}` : normalizedStorage;
       }
     }
 
-    if (!instanceKey) {
-      return res.status(400).json({ error: "Missing required 'destination' or 'storagePath' parameter." });
-    }
+    if (!instanceKey) return res.status(400).json({ error: "Missing required destination/storagePath parameter." });
 
-    const targetFileName = session.fileName || 'uploaded-file';
-    const relativeTarget = folderPath ? `${folderPath}/${targetFileName}` : targetFileName;
+    const relativeTarget = folderPath ? `${folderPath}/${session.fileName}` : session.fileName;
     const targetPath = `${instanceKey}/${normalizeRelativePath(relativeTarget)}`;
 
-    const provider = req.provider || (await StorageAdapter.getClient(req.credentials || instanceKey));
-
-    const stat = fs.statSync(session.path);
-    const fileSize = stat.size;
-
-    const readStream = fs.createReadStream(session.path);
-    readStream.on('error', () => { });
-    await provider.uploadStream(targetPath, readStream, session.path);
-
-    if (fs.existsSync(session.path)) fs.unlinkSync(session.path);
-    delete activeUploads[req.params.fileName];
-    activeUploads[session.fileName] && delete activeUploads[session.fileName];
+    const fileSize = await finalizeSessionUpload(session, targetPath, req.provider);
 
     res.json({
-      name: targetFileName,
+      name: session.fileName,
       sizeInBytes: fileSize,
       location: targetPath,
       isDirectory: false,
-      storageType: provider.constructor.name || 'Local',
+      storageType: req.provider.constructor.name || 'Local',
       lineCount: null,
       creationDate: new Date().toISOString()
     });
@@ -595,11 +629,8 @@ router.post('/writeCancel/:fileName', (req, res) => {
   const session = getUploadSession(req.params.fileName);
   const now = new Date().toISOString();
   const name = session ? session.fileName : req.params.fileName;
-  if (session && fs.existsSync(session.path)) fs.unlinkSync(session.path);
-  if (session) {
-    delete activeUploads[req.params.fileName];
-    activeUploads[session.fileName] && delete activeUploads[session.fileName];
-  }
+  
+  cleanupSession(session);
 
   res.json({
     name,
@@ -621,21 +652,18 @@ router.get('/uploadStatus/:uploadId', (req, res) => {
     location: session.path,
     destLocation: session.destination || '',
     tenant: req.user?.id || 'DEFAULT',
-    destinationId: '00000000-0000-0000-0000-000000000000',
     status: session.status || 'InProgress',
-    statusMessage: 'Upload session active',
+    statusMessage: session.statusMessage || 'Upload session active',
     statusDate: now,
     insertDate: session.creationDate || now,
     deleted: false
   });
 });
 
-// Fallback for non-existent routes within /Storage
 router.use((req, res) => {
   res.status(404).json({ error: `Invalid Object Store service endpoint: ${req.method} ${req.originalUrl}` });
 });
 
-// Router-level error handling middleware to prevent HTML stack dumps
 router.use((err, req, res, next) => {
   const status = err.statusCode || err.status || 500;
   res.status(status).json({ error: err.message || 'An unexpected server error occurred.' });

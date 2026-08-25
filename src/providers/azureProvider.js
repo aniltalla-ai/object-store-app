@@ -37,9 +37,17 @@ class AzureProvider {
     await this.delete(source);
   }
 
-  async download(targetPath, res) {
-    const response = await this.getContainer().getBlockBlobClient(targetPath).download(0);
-    response.readableStreamBody.pipe(res);
+  async download(targetPath, res, options = {}) {
+    const downloadOptions = {};
+    if (options.start !== undefined && options.end !== undefined) {
+      const offset = options.start;
+      const count = (options.end - options.start) + 1;
+      const response = await this.getContainer().getBlockBlobClient(targetPath).download(offset, count, downloadOptions);
+      response.readableStreamBody.pipe(res);
+    } else {
+      const response = await this.getContainer().getBlockBlobClient(targetPath).download(0);
+      response.readableStreamBody.pipe(res);
+    }
   }
 
   async delete(targetPath) {

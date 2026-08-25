@@ -5,5 +5,5 @@ applications:
     memory: 512M
     disk_quota: 512M
     buildpack: nodejs_buildpack
-    command: node server.js
+    command: node src/app.js
       

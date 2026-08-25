@@ -39,8 +39,12 @@ class GcpProvider {
     await this.getBucket().file(source).move(target);
   }
 
-  async download(targetPath, res) {
-    this.getBucket().file(targetPath).createReadStream().pipe(res);
+  async download(targetPath, res, options = {}) {
+    const streamOptions = {};
+    if (options.start !== undefined) streamOptions.start = options.start;
+    if (options.end !== undefined) streamOptions.end = options.end;
+
+    this.getBucket().file(targetPath).createReadStream(streamOptions).pipe(res);
   }
 
   async delete(targetPath) {

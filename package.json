@@ -1,13 +1,10 @@
 {
   "name": "object-store-app",
   "version": "1.0.0",
-  "description": "Standalone Node.js Object Store App",
-  "main": "server.js",
+  "description": "Object Store App",
+  "main": "src/app.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js",
-    "test": "node --test test/*.test.js",
-    "test:server": "node test/testServer.js"
+    "start": "node src/app.js"
   },
   "engines": {
     "node": ">=18"
