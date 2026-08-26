@@ -3,9 +3,28 @@ const { Storage } = require('@google-cloud/storage');
 class GcpProvider {
   constructor(creds) {
     this.bucket = creds.bucket;
-    const authOpts = creds.private_key
-      ? { credentials: { client_email: creds.client_email, private_key: creds.private_key }, projectId: creds.project_id }
-      : { credentials: JSON.parse(creds.gcpKey) };
+
+    let authOpts = {};
+
+    if (creds.base64EncodedPrivateKeyData) {
+      const decodedJsonString = Buffer.from(creds.base64EncodedPrivateKeyData, 'base64').toString('utf8');
+      const serviceAccount = JSON.parse(decodedJsonString);
+
+      authOpts = {
+        credentials: {
+          client_email: serviceAccount.client_email,
+          private_key: serviceAccount.private_key,
+        },
+        projectId: creds.projectId || serviceAccount.project_id,
+      };
+    } else {
+      // Fallback for local testing or raw keys
+      const authOptsFallback = creds.private_key
+        ? { credentials: { client_email: creds.client_email, private_key: creds.private_key }, projectId: creds.project_id }
+        : { credentials: JSON.parse(creds.gcpKey) };
+      authOpts = authOptsFallback;
+    }
+
     this.client = new Storage(authOpts);
   }
 

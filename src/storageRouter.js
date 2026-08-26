@@ -1,3 +1,5 @@
+// storageRouter.js
+
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -60,26 +62,6 @@ const ensureBinaryPayload = (req, res, next) => {
     next();
   });
   req.on('error', (err) => next(err));
-};
-
-const applyChunking = (payload, query) => {
-  const chunkType = (query?.chunkType || 'Binary').toLowerCase();
-  const chunkSize = Number(query?.chunkSize || 0);
-  const chunkPart = Number(query?.chunkPart || 0);
-  const startLine = Number(query?.startLine || 0);
-
-  if (chunkType === 'line') {
-    const lines = payload.toString('utf8').split(/\r?\n/);
-    const startIndex = Math.max(0, startLine);
-    const endIndex = chunkSize > 0 ? startIndex + chunkSize : lines.length;
-    return Buffer.from(lines.slice(startIndex, endIndex).join('\n'));
-  } else if (chunkSize > 0 && chunkPart > 0) {
-    const startIndex = (chunkPart - 1) * chunkSize;
-    return payload.subarray(startIndex, startIndex + chunkSize);
-  } else if (chunkSize > 0) {
-    return payload.subarray(0, chunkSize);
-  }
-  return payload;
 };
 
 const createUploadSession = (fileName, initialBuffer = Buffer.alloc(0)) => {
@@ -152,6 +134,7 @@ router.use(async (req, res, next) => {
   }
 });
 
+// GET /list -> 200 OK (or 404 Not Found if directory path doesn't exist)
 router.get('/list', async (req, res) => {
   try {
     const provider = req.provider;
@@ -166,6 +149,16 @@ router.get('/list', async (req, res) => {
     try {
       files = await provider.list(normalizedSub);
     } catch (listErr) {
+      const errMsg = listErr.message || '';
+      if (
+        errMsg.includes('Not Found') || 
+        errMsg.includes('no such file') || 
+        errMsg.includes('NoSuchKey') || 
+        errMsg.includes('ENOENT') ||
+        listErr.code === 'ENOENT'
+      ) {
+        return res.status(404).json({ error: "Directory or path not found." });
+      }
       files = [];
     }
 
@@ -251,12 +244,13 @@ router.get('/list', async (req, res) => {
       return !relative.includes('/');
     });
 
-    res.json({ bucket: req.instanceId, items });
+    return res.status(200).json({ bucket: req.instanceId, items });
   } catch (err) {
-    res.json({ bucket: req.instanceId || '', items: [] });
+    return res.status(500).json({ error: err.message || 'List operation failed.' });
   }
 });
 
+// POST /createPath -> 201 Created
 router.post('/createPath', async (req, res) => {
   try {
     const provider = req.provider;
@@ -266,7 +260,7 @@ router.post('/createPath', async (req, res) => {
     const normalizedPath = normalizeRelativePath(customPath);
     await provider.createPath([normalizedPath]);
 
-    res.status(200).json({
+    return res.status(201).json({
       name: path.basename(normalizedPath),
       sizeInBytes: 0,
       location: normalizedPath,
@@ -276,43 +270,11 @@ router.post('/createPath', async (req, res) => {
       creationDate: new Date().toISOString()
     });
   } catch (err) {
-    res.status(400).json({ error: err.message || 'Failed to create path.' });
+    return res.status(400).json({ error: err.message || 'Failed to create path.' });
   }
 });
 
-// router.get('/getChunk', async (req, res) => {
-//   try {
-//     const provider = req.provider;
-//     const targetValue = getParam(req, 'location');
-//     if (!targetValue) return res.status(400).json({ error: "Missing required 'location' parameter." });
-
-//     const targetPath = normalizeRelativePath(targetValue);
-//     const chunks = [];
-//     const writableStream = new Writable({
-//       write(chunk, encoding, callback) {
-//         chunks.push(chunk);
-//         callback();
-//       }
-//     });
-
-//     await new Promise((resolve, reject) => {
-//       writableStream.on('finish', resolve);
-//       writableStream.on('error', reject);
-//       Promise.resolve(provider.download(targetPath, writableStream)).catch(reject);
-//     });
-
-//     const payload = Buffer.concat(chunks);
-//     if (!payload || payload.length === 0) {
-//       return res.status(404).json({ error: 'File not found at specified location.' });
-//     }
-
-//     const output = applyChunking(payload, req.query);
-//     res.type('application/octet-stream').send(output);
-//   } catch (err) {
-//     res.status(404).json({ error: 'File not found at specified location.' });
-//   }
-// });
-
+// GET /getChunk -> 206 Partial Content (or 200 OK for 'None', 416 Range Not Satisfiable)
 router.get('/getChunk', async (req, res) => {
   try {
     const provider = req.provider;
@@ -320,29 +282,95 @@ router.get('/getChunk', async (req, res) => {
     if (!targetValue) return res.status(400).json({ error: "Missing required 'location' parameter." });
 
     const targetPath = normalizeRelativePath(targetValue);
-    
-    // Parse query options for range mapping
+    const chunkType = (getParam(req, 'chunkType') || 'Binary').toLowerCase();
     const chunkSize = Number(getParam(req, 'chunkSize') || 0);
     const chunkPart = Number(getParam(req, 'chunkPart') || 0);
-    const chunkType = (getParam(req, 'chunkType') || 'Binary').toLowerCase();
+    const startLine = Number(getParam(req, 'startLine') || 0);
 
-    let options = {};
-    if (chunkType === 'binary' && chunkSize > 0 && chunkPart > 0) {
-      const start = (chunkPart - 1) * chunkSize;
-      const end = start + chunkSize - 1;
-      options = { start, end }; // e.g., bytes=0-1023
-    } else if (chunkType === 'binary' && chunkSize > 0) {
-      options = { start: 0, end: chunkSize - 1 };
+    if (chunkType === 'none') {
+      res.status(200);
+      return await provider.download(targetPath, res);
     }
 
-    res.type('application/octet-stream');
-    // Pass options directly to cloud provider range downloader
-    await provider.download(targetPath, res, options);
+    const fetchFullFilePayload = async () => {
+      const chunks = [];
+      const writableStream = new Writable({
+        write(chunk, encoding, callback) {
+          chunks.push(chunk);
+          callback();
+        }
+      });
+      await new Promise((resolve, reject) => {
+        writableStream.on('finish', resolve);
+        writableStream.on('error', reject);
+        Promise.resolve(provider.download(targetPath, writableStream)).catch(reject);
+      });
+      return Buffer.concat(chunks);
+    };
+
+    if (chunkType === 'line') {
+      let payload;
+      try {
+        payload = await fetchFullFilePayload();
+      } catch (dlErr) {
+        return res.status(404).json({ error: 'File not found at specified location.' });
+      }
+
+      if (!payload || payload.length === 0) {
+        return res.status(404).json({ error: 'File not found at specified location.' });
+      }
+
+      const lines = payload.toString('utf8').split(/\r?\n/);
+      const totalLines = lines.length;
+      const startIndex = Math.max(0, startLine);
+
+      if (startIndex >= totalLines) {
+        return res.status(416).json({ error: 'Range Not Satisfiable: startLine exceeds total file lines.' });
+      }
+
+      const endIndex = chunkSize > 0 ? Math.min(startIndex + chunkSize, totalLines) : totalLines;
+      const output = Buffer.from(lines.slice(startIndex, endIndex).join('\n'));
+      
+      return res.status(206).type('application/octet-stream').send(output);
+    }
+
+    if (chunkType === 'binary') {
+      if (chunkSize <= 0) {
+        return res.status(416).json({ error: 'Range Not Satisfiable: Binary chunk type requires a valid chunkSize.' });
+      }
+
+      let start = 0;
+      if (chunkPart > 0) {
+        start = (chunkPart - 1) * chunkSize;
+      }
+      const end = start + chunkSize - 1;
+
+      try {
+        const fileList = await provider.list(targetPath);
+        const fileObj = fileList.find(f => f.name === targetPath || f.name.endsWith(`/${targetPath}`));
+        if (fileObj && typeof fileObj.size === 'number' && fileObj.size > 0) {
+          if (start >= fileObj.size) {
+            return res.status(416).json({ error: 'Range Not Satisfiable: Requested chunk start exceeds file size.' });
+          }
+        }
+      } catch (inspectErr) {}
+
+      res.status(206);
+      return await provider.download(targetPath, res, { start, end });
+    }
+
+    return res.status(400).json({ error: "Invalid 'chunkType' specified. Must be Line, Binary, or None." });
+
   } catch (err) {
-    res.status(404).json({ error: 'File not found or range invalid.' });
+    const msg = err.message || '';
+    if (msg.includes('Range') || msg.includes('416') || msg.includes('InvalidRange') || msg.includes('range')) {
+      return res.status(416).json({ error: 'Requested Range Not Satisfiable.' });
+    }
+    return res.status(404).json({ error: 'File not found or range invalid at specified location.' });
   }
 });
 
+// POST /copy -> 200 OK
 router.post('/copy', async (req, res) => {
   try {
     const sourceFile = getParam(req, 'sourcePath');
@@ -357,7 +385,7 @@ router.post('/copy', async (req, res) => {
     const normDest = normalizeRelativePath(destinationFile);
     
     await provider.copy(normSource, normDest);
-    res.json({
+    return res.status(200).json({
       name: path.basename(destinationFile),
       sizeInBytes: 0,
       location: normDest,
@@ -371,10 +399,11 @@ router.post('/copy', async (req, res) => {
     if (msg.includes('ENOENT') || msg.includes('not found') || msg.includes('404')) {
       return res.status(404).json({ error: "Source file not found." });
     }
-    res.status(400).json({ error: err.message || 'Copy operation failed.' });
+    return res.status(400).json({ error: err.message || 'Copy operation failed.' });
   }
 });
 
+// POST /move -> 200 OK
 router.post('/move', async (req, res) => {
   try {
     const provider = req.provider;
@@ -389,7 +418,7 @@ router.post('/move', async (req, res) => {
     const normDest = normalizeRelativePath(destinationFile);
     
     await provider.move(normSource, normDest);
-    res.json({
+    return res.status(200).json({
       name: path.basename(destinationFile),
       sizeInBytes: 0,
       location: normDest,
@@ -403,10 +432,11 @@ router.post('/move', async (req, res) => {
     if (msg.includes('ENOENT') || msg.includes('not found') || msg.includes('404')) {
       return res.status(404).json({ error: "Source file not found." });
     }
-    res.status(400).json({ error: err.message || 'Move operation failed.' });
+    return res.status(400).json({ error: err.message || 'Move operation failed.' });
   }
 });
 
+// GET /get -> 200 OK
 router.get('/get', async (req, res) => {
   try {
     const provider = req.provider;
@@ -414,16 +444,18 @@ router.get('/get', async (req, res) => {
     if (!targetPath) return res.status(400).json({ error: "Missing required 'location' parameter." });
 
     const normTarget = normalizeRelativePath(targetPath);
+    res.status(200);
     await provider.download(normTarget, res);
   } catch (err) {
     const msg = err.message || '';
     if (msg.includes('Not Found') || msg.includes('no such file') || msg.includes('404') || err.code === 'ENOENT') {
       return res.status(404).json({ error: "File not found at specified location." });
     }
-    res.status(500).json({ error: err.message || 'Download operation failed.' });
+    return res.status(500).json({ error: err.message || 'Download operation failed.' });
   }
 });
 
+// POST /post -> 201 Created
 router.post('/post', ensureBinaryPayload, async (req, res) => {
   try {
     const targetLocation = getParam(req, 'location');
@@ -437,7 +469,7 @@ router.post('/post', ensureBinaryPayload, async (req, res) => {
     
     const fileSize = await finalizeSessionUpload(session, targetPath, req.provider);
 
-    res.status(200).json({
+    return res.status(201).json({
       name: session.fileName,
       sizeInBytes: fileSize,
       location: targetPath,
@@ -447,10 +479,11 @@ router.post('/post', ensureBinaryPayload, async (req, res) => {
       creationDate: session.creationDate
     });
   } catch (err) {
-    res.status(400).json({ error: err.message || 'Upload failed.' });
+    return res.status(400).json({ error: err.message || 'Upload failed.' });
   }
 });
 
+// POST /postasync -> 202 Accepted
 router.post('/postasync', ensureBinaryPayload, async (req, res) => {
   try {
     const targetLocation = getParam(req, 'location');
@@ -483,27 +516,33 @@ router.post('/postasync', ensureBinaryPayload, async (req, res) => {
       }
     });
   } catch (err) {
-    res.status(400).json({ error: err.message || 'Async upload failed.' });
+    return res.status(400).json({ error: err.message || 'Async upload failed.' });
   }
 });
 
+// DELETE /delete -> 204 No Content on success, 400/404/500 on failure
 router.delete('/delete', async (req, res) => {
   try {
     const provider = req.provider;
     const targetPath = getParam(req, 'location');
-    if (!targetPath) return res.status(400).json({ error: "Missing required 'location' parameter." });
+    if (!targetPath) {
+      return res.status(400).json({ error: "Missing required 'location' parameter." });
+    }
 
     const fullPath = normalizeRelativePath(targetPath);
-    try {
-      await provider.delete(fullPath);
-    } catch (delErr) {
-    }
-    res.status(200).send();
+    await provider.delete(fullPath);
+    
+    return res.status(204).send();
   } catch (err) {
-    res.status(200).send();
+    const msg = err.message || '';
+    if (msg.includes('Not Found') || msg.includes('no such file') || err.code === 'ENOENT') {
+      return res.status(404).json({ error: "File not found at specified location." });
+    }
+    return res.status(500).json({ error: err.message || 'Delete operation failed.' });
   }
 });
 
+// GET /listWritable -> 200 OK
 router.get('/listWritable', async (req, res) => {
   try {
     const pending = Object.values(activeUploads).map((session) => {
@@ -520,12 +559,13 @@ router.get('/listWritable', async (req, res) => {
       };
     });
 
-    res.json(pending);
+    return res.status(200).json(pending);
   } catch (err) {
-    res.json([]);
+    return res.status(200).json([]);
   }
 });
 
+// GET /getWritable/:fileName -> 200 OK
 router.get('/getWritable/:fileName', (req, res) => {
   try {
     const session = getUploadSession(req.params.fileName);
@@ -534,20 +574,35 @@ router.get('/getWritable/:fileName', (req, res) => {
     }
 
     const payload = fs.readFileSync(session.path);
-    const output = applyChunking(payload, req.query);
+    const chunkType = (getParam(req, 'chunkType') || 'Binary').toLowerCase();
+    const chunkSize = Number(getParam(req, 'chunkSize') || 0);
+    const startLine = Number(getParam(req, 'startLine') || 0);
 
-    res.type('application/octet-stream').send(output);
+    let output = payload;
+    if (chunkType === 'line') {
+      const lines = payload.toString('utf8').split(/\r?\n/);
+      const startIndex = Math.max(0, startLine);
+      if (startIndex >= lines.length) {
+        return res.status(416).json({ error: 'Range Not Satisfiable: startLine exceeds session file lines.' });
+      }
+      const endIndex = chunkSize > 0 ? startIndex + chunkSize : lines.length;
+      output = Buffer.from(lines.slice(startIndex, endIndex).join('\n'));
+      return res.status(206).type('application/octet-stream').send(output);
+    }
+
+    return res.status(200).type('application/octet-stream').send(output);
   } catch (err) {
-    res.status(404).json({ error: 'File not found or writable.' });
+    return res.status(404).json({ error: 'File not found or writable.' });
   }
 });
 
+// POST /writeStart/:fileName -> 201 Created
 router.post('/writeStart/:fileName', ensureBinaryPayload, (req, res) => {
   try {
     const dataBuffer = toBinaryPayload(req);
     const session = createUploadSession(req.params.fileName, dataBuffer);
 
-    res.status(200).json({
+    return res.status(201).json({
       name: session.fileName,
       sizeInBytes: dataBuffer.length,
       lineCount: null,
@@ -555,10 +610,11 @@ router.post('/writeStart/:fileName', ensureBinaryPayload, (req, res) => {
       updateDate: session.updateDate
     });
   } catch (err) {
-    res.status(400).json({ error: `Upload start failed: ${err.message}` });
+    return res.status(400).json({ error: `Upload start failed: ${err.message}` });
   }
 });
 
+// POST /writeChunk/:fileName -> 200 OK
 router.post('/writeChunk/:fileName', ensureBinaryPayload, (req, res) => {
   const session = getUploadSession(req.params.fileName);
   if (!session) return res.status(404).json({ error: 'Missing session context mapping.' });
@@ -567,7 +623,7 @@ router.post('/writeChunk/:fileName', ensureBinaryPayload, (req, res) => {
     const dataBuffer = toBinaryPayload(req);
     const size = appendToSession(session, dataBuffer);
 
-    res.json({
+    return res.status(200).json({
       name: session.fileName,
       sizeInBytes: size,
       lineCount: null,
@@ -575,10 +631,11 @@ router.post('/writeChunk/:fileName', ensureBinaryPayload, (req, res) => {
       updateDate: session.updateDate
     });
   } catch (err) {
-    res.status(400).json({ error: `Upload append failed: ${err.message}` });
+    return res.status(400).json({ error: `Upload append failed: ${err.message}` });
   }
 });
 
+// POST /writeComplete/:fileName -> 200 OK
 router.post('/writeComplete/:fileName', async (req, res) => {
   try {
     const session = getUploadSession(req.params.fileName);
@@ -611,7 +668,7 @@ router.post('/writeComplete/:fileName', async (req, res) => {
 
     const fileSize = await finalizeSessionUpload(session, targetPath, req.provider);
 
-    res.json({
+    return res.status(200).json({
       name: session.fileName,
       sizeInBytes: fileSize,
       location: targetPath,
@@ -621,10 +678,11 @@ router.post('/writeComplete/:fileName', async (req, res) => {
       creationDate: new Date().toISOString()
     });
   } catch (err) {
-    res.status(400).json({ error: err.message || 'Complete operation failed.' });
+    return res.status(400).json({ error: err.message || 'Complete operation failed.' });
   }
 });
 
+// POST /writeCancel/:fileName -> 200 OK
 router.post('/writeCancel/:fileName', (req, res) => {
   const session = getUploadSession(req.params.fileName);
   const now = new Date().toISOString();
@@ -632,7 +690,7 @@ router.post('/writeCancel/:fileName', (req, res) => {
   
   cleanupSession(session);
 
-  res.json({
+  return res.status(200).json({
     name,
     sizeInBytes: 0,
     lineCount: null,
@@ -641,12 +699,13 @@ router.post('/writeCancel/:fileName', (req, res) => {
   });
 });
 
+// GET /uploadStatus/:uploadId -> 200 OK
 router.get('/uploadStatus/:uploadId', (req, res) => {
   const session = getUploadSession(req.params.uploadId);
   if (!session) return res.status(404).json({ error: 'Not Found or Session Completed' });
 
   const now = new Date().toISOString();
-  res.json({
+  return res.status(200).json({
     id: session.uploadId || req.params.uploadId,
     fileName: session.fileName,
     location: session.path,
@@ -661,12 +720,12 @@ router.get('/uploadStatus/:uploadId', (req, res) => {
 });
 
 router.use((req, res) => {
-  res.status(404).json({ error: `Invalid Object Store service endpoint: ${req.method} ${req.originalUrl}` });
+  return res.status(404).json({ error: `Invalid Object Store service endpoint: ${req.method} ${req.originalUrl}` });
 });
 
 router.use((err, req, res, next) => {
   const status = err.statusCode || err.status || 500;
-  res.status(status).json({ error: err.message || 'An unexpected server error occurred.' });
+  return res.status(status).json({ error: err.message || 'An unexpected server error occurred.' });
 });
 
 module.exports = router;

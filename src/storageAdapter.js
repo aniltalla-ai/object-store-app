@@ -8,7 +8,7 @@ class StorageAdapter {
     // 1. If passed a credentials object directly (from security.js / xsenv)
     if (credentials && !isUseDestionation) {
       if (credentials.access_key_id) return new AwsProvider(credentials);
-      if (credentials.private_key) return new GcpProvider(credentials);
+      if (credentials.private_key || credentials.base64EncodedPrivateKeyData) return new GcpProvider(credentials);
       return new AzureProvider(credentials);
     }
     if (!destinationName) {
