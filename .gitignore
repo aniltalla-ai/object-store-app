@@ -23,6 +23,6 @@ tmp_storage_chunks/
 *.swp
 *.swo
 
-default-env.json
+default-env.*
 xs-security.json
 xs-Security.js
