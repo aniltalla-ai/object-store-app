@@ -38,9 +38,14 @@ const xsuaaAuth = async (req, res, next) => {
     const tokenPayload = securityContext.token?.payload || {};
     const clientId = tokenPayload.client_id || '';
     const appName = clientId.replace('sb-', '') + '.';
-    const objectStoreName = tokenPayload.authorities
-      .find(a => a.startsWith(`${appName}OS:`))
-      ?.replace(`${appName}OS:`, '');
+    const config = {};
+    tokenPayload.authorities.forEach(authority => {
+      if (authority.startsWith(appName)) {
+        const [key, value] = authority.replace(appName, '').split(':');
+        config[key] = value;
+      }
+    });
+    const objectStoreName = config['OS'];
 
     if (!objectStoreName) {
       return res.status(400).json({
@@ -57,7 +62,7 @@ const xsuaaAuth = async (req, res, next) => {
     // Access the credentials object
     const credentials = serviceInfo.objectStore;
     req.credentials = credentials;
-
+    req.cryptoDestination = config['DEST'] || null;
     next();
   } catch (error) {
     console.error("[AUTH FAILED] Error parsing token payload:", error.message);

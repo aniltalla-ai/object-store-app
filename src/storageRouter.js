@@ -9,6 +9,9 @@ const { v4: uuidv4 } = require('uuid');
 const StorageAdapter = require('./storageAdapter');
 const xsuaaAuth = require('./security');
 
+const { PassThrough } = require('stream');
+const cryptoService = require('./crypto');
+
 const router = express.Router();
 
 const TEMP_DIR = path.join(os.tmpdir(), 'object_store_temp');
@@ -444,8 +447,30 @@ router.get('/get', async (req, res) => {
     if (!targetPath) return res.status(400).json({ error: "Missing required 'location' parameter." });
 
     const normTarget = normalizeRelativePath(targetPath);
-    res.status(200);
-    await provider.download(normTarget, res);
+    const cryptoActive = await cryptoService.isActive(req.cryptoDestination);
+
+    if (!cryptoActive) {
+      return await provider.download(normTarget, res);
+    }
+
+    const passThrough = new PassThrough();
+    const chunks = [];
+    passThrough.on('data', (chunk) => chunks.push(chunk));
+
+    await Promise.all([
+      provider.download(normTarget, passThrough),
+      new Promise((resolve, reject) => {
+        passThrough.on('end', resolve);
+        passThrough.on('error', reject);
+      })
+    ]);
+
+    const payload = Buffer.concat(chunks);
+    const decrypted = await cryptoService.decryptBuffer(payload, req.cryptoDestination);
+
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Length', decrypted.length);
+    res.send(decrypted);
   } catch (err) {
     const msg = err.message || '';
     if (msg.includes('Not Found') || msg.includes('no such file') || msg.includes('404') || err.code === 'ENOENT') {
@@ -461,9 +486,15 @@ router.post('/post', ensureBinaryPayload, async (req, res) => {
     const targetLocation = getParam(req, 'location');
     if (!targetLocation) return res.status(400).json({ error: "Missing required 'location' parameter." });
 
-    const filePayload = toBinaryPayload(req);
+    let filePayload = toBinaryPayload(req);
     if (!filePayload || filePayload.length === 0) return res.status(400).json({ error: 'Empty file payload.' });
 
+    const cryptoActive = await cryptoService.isActive(req.cryptoDestination);
+
+    if (cryptoActive) {
+      filePayload = await cryptoService.encryptBuffer(filePayload, req.cryptoDestination);
+    }
+    
     const targetPath = normalizeRelativePath(targetLocation);
     const session = createUploadSession(targetLocation, filePayload);
     
