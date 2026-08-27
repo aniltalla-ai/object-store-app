@@ -59,7 +59,6 @@ const xsuaaAuth = async (req, res, next) => {
       objectStore: { name: objectStoreName }
     });
 
-    // Access the credentials object
     const credentials = serviceInfo.objectStore;
     req.credentials = credentials;
     req.cryptoDestination = config['DEST'] || null;
