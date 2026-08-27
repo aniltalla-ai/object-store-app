@@ -39,8 +39,8 @@ const xsuaaAuth = async (req, res, next) => {
     const clientId = tokenPayload.client_id || '';
     const appName = clientId.replace('sb-', '') + '.';
     const objectStoreName = tokenPayload.authorities
-      .find(a => a.startsWith(appName))
-      ?.replace(appName, '');
+      .find(a => a.startsWith(`${appName}OS:`))
+      ?.replace(`${appName}OS:`, '');
 
     if (!objectStoreName) {
       return res.status(400).json({

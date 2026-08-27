@@ -22,7 +22,7 @@ Thumbs.db
 app/
 config-v1.md
 config-v2.md
-default-env.json
+default-*.json
 xs-security.json
 xs-Security.js
 README.md
