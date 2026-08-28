@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { S3Client, PutObjectCommand, CopyObjectCommand, DeleteObjectCommand, GetObjectCommand, paginateListObjectsV2 } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, CopyObjectCommand, DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, paginateListObjectsV2 } = require('@aws-sdk/client-s3');
 
 class AwsProvider {
   constructor(creds) {
@@ -60,9 +60,22 @@ class AwsProvider {
     await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: targetPath }));
   }
 
-  async uploadStream(targetPath, fsReadStream, localFilePath) {
+  async uploadStream(targetPath, fsReadStream, localFilePath, metadata = null) {
     const bodyStream = fsReadStream || (localFilePath ? fs.createReadStream(localFilePath) : null);
-    await this.client.send(new PutObjectCommand({ Bucket: this.bucket, Key: targetPath, Body: bodyStream }));
+    const params = { Bucket: this.bucket, Key: targetPath, Body: bodyStream };
+    if (metadata && typeof metadata === 'object') {
+      params.Metadata = metadata;
+    }
+    await this.client.send(new PutObjectCommand(params));
+  }
+
+  async getMetadata(targetPath) {
+    try {
+      const data = await this.client.send(new HeadObjectCommand({ Bucket: this.bucket, Key: targetPath }));
+      return data.Metadata || {};
+    } catch (e) {
+      return {};
+    }
   }
 }
 

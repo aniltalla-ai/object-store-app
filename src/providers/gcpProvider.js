@@ -69,11 +69,22 @@ class GcpProvider {
     await this.getBucket().file(targetPath).delete();
   }
 
-  async uploadStream(targetPath, fsReadStream) {
+  async uploadStream(targetPath, fsReadStream, localFilePath, metadata = null) {
+    const stream = fsReadStream || (localFilePath ? require('fs').createReadStream(localFilePath) : null);
     const blob = this.getBucket().file(targetPath);
+    const writeStreamOptions = metadata && typeof metadata === 'object' ? { metadata: { metadata } } : {};
     await new Promise((res, rej) => {
-      fsReadStream.pipe(blob.createWriteStream()).on('finish', res).on('error', rej);
+      stream.pipe(blob.createWriteStream(writeStreamOptions)).on('finish', res).on('error', rej);
     });
+  }
+
+  async getMetadata(targetPath) {
+    try {
+      const [meta] = await this.getBucket().file(targetPath).getMetadata();
+      return meta.metadata || {};
+    } catch (e) {
+      return {};
+    }
   }
 }
 

@@ -78,8 +78,19 @@ class AzureProvider {
     await this.getContainer().getBlockBlobClient(targetPath).delete();
   }
 
-  async uploadStream(targetPath, fsReadStream) {
-    await this.getContainer().getBlockBlobClient(targetPath).uploadStream(fsReadStream);
+  async uploadStream(targetPath, fsReadStream, localFilePath, metadata = null) {
+    const stream = fsReadStream || (localFilePath ? require('fs').createReadStream(localFilePath) : null);
+    const options = metadata && typeof metadata === 'object' ? { metadata } : undefined;
+    await this.getContainer().getBlockBlobClient(targetPath).uploadStream(stream, undefined, undefined, options);
+  }
+
+  async getMetadata(targetPath) {
+    try {
+      const properties = await this.getContainer().getBlockBlobClient(targetPath).getProperties();
+      return properties.metadata || {};
+    } catch (e) {
+      return {};
+    }
   }
 }
 
