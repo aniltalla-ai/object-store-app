@@ -17,6 +17,39 @@
     }
   ],
   "paths": {
+    "/Storage/encryptionStatus": {
+      "get": {
+        "tags": [
+          "Storage"
+        ],
+        "summary": "Check encryption status and algorithm for a target destination",
+        "parameters": [
+          {
+            "name": "destination",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Destination name configured in SAP Destination Service (or pass via x-crypto-destination header)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Encryption status details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EncryptionStatusResponseModel"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
     "/Storage/list": {
       "get": {
         "tags": [
@@ -849,6 +882,30 @@
           }
         },
         "additionalProperties": false
+      },
+      "EncryptionStatusResponseModel": {
+        "type": "object",
+        "properties": {
+          "destination": {
+            "type": "string",
+            "nullable": true,
+            "description": "Name of the resolved encryption destination"
+          },
+          "enabled": {
+            "type": "boolean",
+            "description": "Indicates whether encryption is enabled for this destination"
+          },
+          "algorithm": {
+            "type": "string",
+            "nullable": true,
+            "description": "Configured encryption algorithm (e.g. aes, rsa, pgp)"
+          },
+          "format": {
+            "type": "string",
+            "nullable": true,
+            "description": "Configured encryption format (e.g. binary, armored)"
+          }
+        }
       },
       "UploadStatus": {
         "type": "string",

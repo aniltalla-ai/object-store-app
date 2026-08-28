@@ -6,6 +6,7 @@ const xsuaaAuth = require('./security');
 const requestUtils = require('./utils/requestUtils');
 const sessionUtils = require('./utils/sessionUtils');
 const pipelineUtils = require('./utils/pipelineUtils');
+const cryptoAdapter = require('./cryptoAdapter');
 
 const router = express.Router();
 
@@ -19,6 +20,37 @@ router.use(async (req, res, next) => {
     const statusCode = err.statusCode || 400;
     console.error(`[STORAGE ADAPTER INIT ERROR ${statusCode}]`, err.message);
     return res.status(statusCode).json({ error: err.message });
+  }
+});
+
+// GET /encryptionStatus -> 200 OK
+router.get('/encryptionStatus', async (req, res) => {
+  try {
+    const dest = requestUtils.getParam(req, 'destination') || 
+                 requestUtils.getParam(req, 'cryptoDestination') || 
+                 req.cryptoDestination || null;
+
+    if (!dest) {
+      return res.status(200).json({
+        destination: null,
+        enabled: false,
+        algorithm: null,
+        message: 'No encryption destination specified.'
+      });
+    }
+
+    const config = await cryptoAdapter.getConfig(dest);
+    const enabled = Boolean(config && config.enabled);
+    const algorithm = enabled ? config.algorithm : (config?.algorithm || null);
+
+    return res.status(200).json({
+      destination: dest,
+      enabled,
+      algorithm,
+      format: config?.format || null
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message || 'Failed to resolve encryption status.' });
   }
 });
 

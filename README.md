@@ -104,6 +104,7 @@ All storage operations are rooted at `/Storage` and require `Authorization: Bear
 | POST | `/Storage/createPath` | Create a logical folder for `path`. |
 | GET | `/Storage/get` | Download the object at `location`. |
 | GET | `/Storage/getChunk` | Read `location` by `Line`, `Binary`, or `None` chunk mode. |
+| GET | `/Storage/encryptionStatus` | Check if encryption is enabled for a destination and return algorithm details. |
 | POST | `/Storage/post` | Upload a binary request body to `location`. |
 | POST | `/Storage/postasync` | Start an asynchronous upload to `location`; returns an upload ID. |
 | POST | `/Storage/copy` | Copy `sourcePath` to `destinationPath`. |
@@ -127,7 +128,9 @@ The maximum parsed request body size is 100 MB for JSON, `application/octet-stre
 
 ## Optional encryption
 
-When a crypto destination is selected and its settings are valid, uploads are encrypted before provider upload. Encryption metadata is written with the object, and downloads use that metadata to decrypt the payload.
+When a crypto destination is selected and its settings are valid, uploads are encrypted before provider upload. The service automatically attaches metadata (`isencrypted: 'true'`, `encryptionalgorithm`, `cryptodestination`) to objects in AWS S3, Azure Blob, and GCP Storage. When encryption is disabled, objects are saved raw without custom metadata. On read/download, object headers are inspected to conditionally decrypt only encrypted payloads.
+
+You can query `GET /Storage/encryptionStatus?destination=<name>` to verify whether encryption is enabled and check the configured algorithm.
 
 Configure these Destination properties:
 
