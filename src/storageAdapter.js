@@ -1,38 +1,53 @@
-const { getDestination } = require('@sap-cloud-sdk/connectivity');
 const AwsProvider = require('./providers/awsProvider');
 const AzureProvider = require('./providers/azureProvider');
 const GcpProvider = require('./providers/gcpProvider');
 
 class StorageAdapter {
-  static async getClient(credentials = null, destinationName = null, isUseDestionation = false) {
-    // 1. If passed a credentials object directly (from security.js / xsenv)
-    if (credentials && !isUseDestionation) {
-      if (credentials.access_key_id) return new AwsProvider(credentials);
-      if (credentials.private_key || credentials.base64EncodedPrivateKeyData) return new GcpProvider(credentials);
+  /**
+   * Instantiates appropriate Storage Provider based on bound credentials
+   * @param {Object} credentials - Bound Object Store service credentials
+   * @returns {AwsProvider | AzureProvider | GcpProvider}
+   */
+  static async getClient(credentials = null) {
+    if (!credentials || typeof credentials !== 'object' || Object.keys(credentials).length === 0) {
+      const err = new Error("Missing Object Store service credentials. Ensure your application is bound to a valid Object Store instance.");
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // 1. AWS Credentials Validation
+    if (credentials.access_key_id) {
+      if (!credentials.secret_access_key) {
+        const err = new Error("Invalid AWS Object Store credentials: Missing 'secret_access_key'.");
+        err.statusCode = 400;
+        throw err;
+      }
+      if (!credentials.bucket) {
+        const err = new Error("Invalid AWS Object Store credentials: Missing target 'bucket'.");
+        err.statusCode = 400;
+        throw err;
+      }
+      return new AwsProvider(credentials);
+    }
+
+    // 2. GCP Credentials Validation
+    if (credentials.private_key || credentials.base64EncodedPrivateKeyData || credentials.gcpKey) {
+      if (!credentials.bucket) {
+        const err = new Error("Invalid GCP Object Store credentials: Missing target 'bucket'.");
+        err.statusCode = 400;
+        throw err;
+      }
+      return new GcpProvider(credentials);
+    }
+
+    // 3. Azure Credentials Validation
+    if (credentials.account_name || credentials.container_uri || credentials.sas_token || credentials.connection_string || credentials.container_name || credentials.container) {
       return new AzureProvider(credentials);
     }
-    if (!destinationName) {
-      throw new Error("Missing storage credentials or instance identifier.");
-    }
 
-    try {
-      const dest = await getDestination({ destinationName });
-      if (!dest) throw new Error(`Destination ${destinationName} not found.`);
-
-      const url = dest.url || '';
-      if (url.includes('amazonaws.com')) return new AwsProvider(dest.username ? {
-        bucket: dest.originalProperties.bucket,
-        region: dest.originalProperties.region,
-        access_key_id: dest.username,
-        secret_access_key: dest.password,
-      } : dest.originalProperties);
-      if (url.includes('blob.core.windows.net')) return new AzureProvider(dest.originalProperties);
-      if (url.includes('googleapis.com')) return new GcpProvider(dest.originalProperties);
-
-      throw new Error('Unsupported cloud vendor provider mapping.');
-    } catch (err) {
-      throw new Error(`Failed to resolve storage runtime setup: ${err.message}`);
-    }
+    const err = new Error("Invalid Object Store credentials: Provider format not recognized or key credentials missing.");
+    err.statusCode = 400;
+    throw err;
   }
 }
 

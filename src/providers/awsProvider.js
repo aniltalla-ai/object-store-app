@@ -1,4 +1,5 @@
-const { S3Client, PutObjectCommand, ListObjectsV2Command, CopyObjectCommand, DeleteObjectCommand, GetObjectCommand, paginateListObjectsV2 } = require('@aws-sdk/client-s3');
+const fs = require('fs');
+const { S3Client, PutObjectCommand, CopyObjectCommand, DeleteObjectCommand, GetObjectCommand, paginateListObjectsV2 } = require('@aws-sdk/client-s3');
 
 class AwsProvider {
   constructor(creds) {
@@ -60,8 +61,8 @@ class AwsProvider {
   }
 
   async uploadStream(targetPath, fsReadStream, localFilePath) {
-    const fs = require('fs');
-    await this.client.send(new PutObjectCommand({ Bucket: this.bucket, Key: targetPath, Body: fs.readFileSync(localFilePath) }));
+    const bodyStream = fsReadStream || (localFilePath ? fs.createReadStream(localFilePath) : null);
+    await this.client.send(new PutObjectCommand({ Bucket: this.bucket, Key: targetPath, Body: bodyStream }));
   }
 }
 

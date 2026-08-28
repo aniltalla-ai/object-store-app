@@ -61,7 +61,7 @@ const xsuaaAuth = async (req, res, next) => {
 
     const credentials = serviceInfo.objectStore;
     req.credentials = credentials;
-    req.cryptoDestination = config['DEST'] || null;
+    req.cryptoDestination = config['DEST'] || req.query?.cryptoDestination || req.query?.destination || req.headers?.['x-crypto-destination'] || req.headers?.['destination'] || null;
     next();
   } catch (error) {
     console.error("[AUTH FAILED] Error parsing token payload:", error.message);

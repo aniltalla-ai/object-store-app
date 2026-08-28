@@ -18,10 +18,9 @@ class GcpProvider {
         projectId: creds.projectId || serviceAccount.project_id,
       };
     } else {
-      // Fallback for local testing or raw keys
       const authOptsFallback = creds.private_key
         ? { credentials: { client_email: creds.client_email, private_key: creds.private_key }, projectId: creds.project_id }
-        : { credentials: JSON.parse(creds.gcpKey) };
+        : { credentials: typeof creds.gcpKey === 'string' ? JSON.parse(creds.gcpKey) : creds.gcpKey };
       authOpts = authOptsFallback;
     }
 
