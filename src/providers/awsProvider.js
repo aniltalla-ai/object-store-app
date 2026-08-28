@@ -47,13 +47,26 @@ class AwsProvider {
     await this.delete(source);
   }
 
-  async download(targetPath, res, options = {}) {
+  async download(targetPath, res = null, options = {}) {
     const params = { Bucket: this.bucket, Key: targetPath };
     if (options.start !== undefined && options.end !== undefined) {
       params.Range = `bytes=${options.start}-${options.end}`;
     }
     const data = await this.client.send(new GetObjectCommand(params));
-    data.Body.pipe(res);
+    if (res && typeof res.pipe === 'function') {
+      if (typeof data.Body?.on === 'function') {
+        data.Body.on('error', (err) => {
+          if (typeof res.destroy === 'function') res.destroy(err);
+        });
+      }
+      data.Body.pipe(res);
+      return;
+    }
+    if (data.Body && typeof data.Body.transformToByteArray === 'function') {
+      const byteArray = await data.Body.transformToByteArray();
+      return Buffer.from(byteArray);
+    }
+    return data.Body;
   }
 
   async delete(targetPath) {

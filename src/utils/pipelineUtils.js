@@ -1,5 +1,6 @@
 const fs = require('fs');
 const { Writable } = require('stream');
+const { pipeline } = require('stream/promises');
 const cryptoService = require('../cryptoAdapter');
 const { cleanupSession } = require('./sessionUtils');
 
@@ -28,7 +29,7 @@ const finalizeSessionUpload = async (session, targetPath, provider, cryptoDestin
   const fileSize = stat.size;
 
   const readStream = fs.createReadStream(session.path);
-  readStream.on('error', () => {});
+  readStream.on('error', () => { });
 
   await provider.uploadStream(targetPath, readStream, session.path, metadata);
 
@@ -45,24 +46,26 @@ const fetchAndDecryptPayload = async (provider, targetPath, cryptoDestination = 
   if (provider && typeof provider.getMetadata === 'function') {
     try {
       fileMetadata = await provider.getMetadata(targetPath);
-    } catch (e) {}
+    } catch (e) { }
   }
 
-  const chunks = [];
-  const writableStream = new Writable({
-    write(chunk, encoding, callback) {
-      chunks.push(chunk);
-      callback();
-    }
-  });
-
-  await new Promise((resolve, reject) => {
-    writableStream.on('finish', resolve);
-    writableStream.on('error', reject);
-    Promise.resolve(provider.download(targetPath, writableStream)).catch(reject);
-  });
-
-  const rawPayload = Buffer.concat(chunks);
+  let rawPayload;
+  const result = await provider.download(targetPath);
+  if (Buffer.isBuffer(result)) {
+    rawPayload = result;
+  } else if (result && typeof result.pipe === 'function') {
+    const chunks = [];
+    const writableStream = new Writable({
+      write(chunk, encoding, callback) {
+        chunks.push(chunk);
+        callback();
+      }
+    });
+    await pipeline(result, writableStream);
+    rawPayload = Buffer.concat(chunks);
+  } else {
+    rawPayload = Buffer.alloc(0);
+  }
 
   // Normalize metadata key access (handling lowercased or camelCased keys)
   const isEncrypted = fileMetadata?.isencrypted === 'true' || fileMetadata?.isEncrypted === 'true';

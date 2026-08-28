@@ -57,12 +57,23 @@ class GcpProvider {
     await this.getBucket().file(source).move(target);
   }
 
-  async download(targetPath, res, options = {}) {
+  async download(targetPath, res = null, options = {}) {
     const streamOptions = {};
     if (options.start !== undefined) streamOptions.start = options.start;
     if (options.end !== undefined) streamOptions.end = options.end;
+    const file = this.getBucket().file(targetPath);
 
-    this.getBucket().file(targetPath).createReadStream(streamOptions).pipe(res);
+    if (res && typeof res.pipe === 'function') {
+      const readStream = file.createReadStream(streamOptions);
+      readStream.on('error', (err) => {
+        if (typeof res.destroy === 'function') res.destroy(err);
+      });
+      readStream.pipe(res);
+      return;
+    }
+
+    const [buffer] = await file.download(streamOptions);
+    return buffer;
   }
 
   async delete(targetPath) {
