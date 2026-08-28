@@ -14,9 +14,11 @@ if (xsuaaServices.length === 0) {
   console.error("No XSUAA services found bound to this application!");
 }
 
+const { formatErrorResponse } = require('./utils/errorNormalizer');
+
 const xsuaaAuth = async (req, res, next) => {
   if (xsuaaServices.length === 0) {
-    return res.status(500).json({ error: req.__ ? req.__('UNAUTHORIZED_NO_XSUAA') : "Server misconfigured: No XSUAA bindings found." });
+    return res.status(500).json(formatErrorResponse('Server misconfigured: No XSUAA bindings found.', req, 'UNAUTHORIZED_NO_XSUAA'));
   }
 
   let securityContext = null;
@@ -31,7 +33,7 @@ const xsuaaAuth = async (req, res, next) => {
 
   if (!securityContext) {
     console.error("[AUTH FAILED] Token did not match any bound XSUAA service audiences.");
-    return res.status(401).json({ error: req.__ ? req.__('UNAUTHORIZED_INVALID_TOKEN') : "Unauthorized: Invalid token signature or issuer." });
+    return res.status(401).json(formatErrorResponse('Unauthorized: Invalid token signature or issuer.', req, 'UNAUTHORIZED_INVALID_TOKEN'));
   }
 
   try {
@@ -48,9 +50,11 @@ const xsuaaAuth = async (req, res, next) => {
     const objectStoreName = config['OS'];
 
     if (!objectStoreName) {
-      return res.status(400).json({
-        error: req.__ ? req.__('MISSING_OBJECT_STORE') : 'No Object Store Instance attribute found. Ensure you are using a user token (not client credentials) and that the role template assigns this attribute.'
-      });
+      return res.status(400).json(formatErrorResponse(
+        'No Object Store Instance attribute found.',
+        req,
+        'MISSING_OBJECT_STORE'
+      ));
     }
 
     req.securityContext = securityContext;
@@ -65,7 +69,7 @@ const xsuaaAuth = async (req, res, next) => {
     next();
   } catch (error) {
     console.error("[AUTH FAILED] Error parsing token payload:", error.message);
-    return res.status(401).json({ error: req.__ ? req.__('TOKEN_PARSE_ERROR') : "Unauthorized: Failed to parse token payload." });
+    return res.status(401).json(formatErrorResponse(error, req, 'TOKEN_PARSE_ERROR'));
   }
 };
 

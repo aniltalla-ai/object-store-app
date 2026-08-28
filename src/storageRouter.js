@@ -6,6 +6,7 @@ const xsuaaAuth = require('./security');
 const requestUtils = require('./utils/requestUtils');
 const sessionUtils = require('./utils/sessionUtils');
 const pipelineUtils = require('./utils/pipelineUtils');
+const { formatErrorResponse } = require('./utils/errorNormalizer');
 
 const router = express.Router();
 
@@ -18,9 +19,7 @@ router.use(async (req, res, next) => {
   } catch (err) {
     const statusCode = err.statusCode || 400;
     console.error(`[STORAGE ADAPTER INIT ERROR ${statusCode}]`, err.message);
-    return res.status(statusCode).json({
-      error: req.__ ? req.__('STORAGE_INIT_ERROR', { message: err.message }) : err.message
-    });
+    return res.status(statusCode).json(formatErrorResponse(err, req, 'STORAGE_INIT_ERROR'));
   }
 });
 
