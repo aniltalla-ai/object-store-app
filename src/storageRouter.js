@@ -26,12 +26,10 @@ router.use(async (req, res, next) => {
 // GET /encryptionStatus -> 200 OK
 router.get('/encryptionStatus', async (req, res) => {
   try {
-    const dest = requestUtils.getParam(req, 'destination') || 
-                 requestUtils.getParam(req, 'cryptoDestination') || 
-                 req.cryptoDestination || null;
+    const dest = req.cryptoDestination || null;
 
     if (!dest) {
-      return res.status(200).json({
+      return res.status(400).json({
         destination: null,
         enabled: false,
         algorithm: null,

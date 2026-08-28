@@ -23,16 +23,6 @@
           "Storage"
         ],
         "summary": "Check encryption status and algorithm for a target destination",
-        "parameters": [
-          {
-            "name": "destination",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            },
-            "description": "Destination name configured in SAP Destination Service (or pass via x-crypto-destination header)"
-          }
-        ],
         "responses": {
           "200": {
             "description": "Encryption status details",
