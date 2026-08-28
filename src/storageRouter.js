@@ -18,7 +18,9 @@ router.use(async (req, res, next) => {
   } catch (err) {
     const statusCode = err.statusCode || 400;
     console.error(`[STORAGE ADAPTER INIT ERROR ${statusCode}]`, err.message);
-    return res.status(statusCode).json({ error: err.message });
+    return res.status(statusCode).json({
+      error: req.__ ? req.__('STORAGE_INIT_ERROR', { message: err.message }) : err.message
+    });
   }
 });
 

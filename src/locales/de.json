@@ -1,0 +1,33 @@
+{
+  "UNAUTHORIZED_NO_XSUAA": "Serverfehlkonfiguration: Keine XSUAA-Bindungen gefunden.",
+  "UNAUTHORIZED_INVALID_TOKEN": "Nicht autorisiert: Ungültige Tokensignatur oder Aussteller.",
+  "MISSING_OBJECT_STORE": "Kein Object Store Instanz-Attribut gefunden. Stellen Sie sicher, dass Sie ein Benutzertoken verwenden und die Rollenvorlage dieses Attribut zuweist.",
+  "TOKEN_PARSE_ERROR": "Nicht autorisiert: Token-Nutzlast konnte nicht analysiert werden.",
+  "MISSING_SOURCE_DEST_PATHS": "Fehlende Parameter 'sourcePath' oder 'destinationPath'.",
+  "MISSING_DESTINATION_PATH": "Erforderlicher Parameter 'destination/storagePath' fehlt.",
+  "INVALID_SOURCE_PATH": "Ungültiger Parameter 'sourcePath'.",
+  "DIRECTORY_NOT_FOUND": "Verzeichnis nicht gefunden.",
+  "FILE_NOT_FOUND": "Datei oder Objekt nicht gefunden.",
+  "MISSING_FILE_NAME": "Fehlender Dateiname oder Zielpfad.",
+  "STORAGE_INIT_ERROR": "Fehler bei der Initialisierung des Storage-Adapters: {{message}}",
+
+  "SWAGGER_INFO_TITLE": "Object Store Dienste",
+  "SWAGGER_INFO_DESC": "REST-API-Dienst für Objektspeicher (AWS S3, Azure Blob, GCP Storage) mit Mandantentrennung",
+
+  "SWAGGER_GET__STORAGE_LIST_SUMMARY": "Dateien und Ordner im Objektspeicher auflisten",
+  "SWAGGER_POST__STORAGE_CREATEPATH_SUMMARY": "Verzeichnispfad im Objektspeicher erstellen",
+  "SWAGGER_GET__STORAGE_DOWNLOAD_SUMMARY": "Datei vom Zielort herunterladen",
+  "SWAGGER_GET__STORAGE_DOWNLOADCHUNK_SUMMARY": "Datei-Block vom Zielort abrufen",
+  "SWAGGER_POST__STORAGE_UPLOAD_SUMMARY": "Datei synchron zum Zielort hochladen",
+  "SWAGGER_POST__STORAGE_UPLOADASYNC_SUMMARY": "Datei asynchron zum Zielort hochladen",
+  "SWAGGER_POST__STORAGE_COPY_SUMMARY": "Datei vom Quellpfad zum Zielpfad kopieren",
+  "SWAGGER_POST__STORAGE_MOVE_SUMMARY": "Datei vom Quellpfad zum Zielpfad verschieben",
+  "SWAGGER_DELETE__STORAGE_DELETE_SUMMARY": "Datei vom Zielort löschen",
+  "SWAGGER_GET__STORAGE_WRITING_LIST_SUMMARY": "Ausstehende Dateien zum Schreiben/Anfügen auflisten",
+  "SWAGGER_GET__STORAGE_WRITING_READ_SUMMARY": "Teil oder Gesamtheit einer schreibbaren Datei abrufen",
+  "SWAGGER_POST__STORAGE_WRITING_CREATE_SUMMARY": "Dateisitzung zum Anfügen von Daten erstellen",
+  "SWAGGER_POST__STORAGE_WRITING_APPEND_SUMMARY": "Datenblock zu bestehender Dateisitzung hinzufügen",
+  "SWAGGER_POST__STORAGE_WRITING_CLOSE_SUMMARY": "Schreibbare Dateisitzung schließen und übertragen",
+  "SWAGGER_DELETE__STORAGE_WRITING_CANCEL_SUMMARY": "Schreibsitzung abbrechen und temporäre Blöcke löschen",
+  "SWAGGER_GET__STORAGE_WRITING_STATUS_SUMMARY": "Status ausstehender Uploads anzeigen"
+}

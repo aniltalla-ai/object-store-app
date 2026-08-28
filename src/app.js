@@ -3,15 +3,35 @@ require('dotenv').config();
 const path = require('path');
 const fs = require('fs');
 const express = require('express');
-const passport = require('passport');
+const i18n = require('i18n');
 const storageRouter = require('./storageRouter');
 
 const app = express();
+
+i18n.configure({
+  locales: ['en', 'de'],
+  defaultLocale: 'en',
+  directory: path.join(__dirname, 'locales'),
+  header: 'accept-language',
+  queryParameter: 'lang',
+  autoReload: true,
+  objectNotation: true,
+});
 
 app.use(passport.initialize());
 app.use(express.json({ limit: '100mb' }));
 app.use(express.raw({ type: 'application/octet-stream', limit: '100mb' }));
 app.use(express.text({ type: 'text/plain', limit: '100mb' }));
+app.use(i18n.init);
+
+// Middleware to support SAP-specific language headers
+app.use((req, res, next) => {
+  const sapLang = req.headers['sap-language'] || req.headers['x-sap-language'];
+  if (sapLang) {
+    req.setLocale(sapLang.toLowerCase());
+  }
+  next();
+});
 
 const getAuthTokenUrl = () => {
   let baseUrl = process.env.AUTH_TOKEN_URL;
@@ -46,15 +66,43 @@ const getAuthTokenUrl = () => {
   return baseUrl;
 };
 
-// Serve static openapi.json file with dynamic AUTH_TOKEN_URL replacement
+// Serve static openapi.json file with dynamic AUTH_TOKEN_URL replacement and localization
 app.get(['/swagger/openapi.json', '/openapi.json'], (req, res) => {
+  const lang = (req.query.lang || req.headers['accept-language'] || req.headers['sap-language'] || 'en').toString().toLowerCase().split('-')[0];
+  if (req.setLocale) req.setLocale(lang);
+
   const specPath = path.join(__dirname, '../public', 'openapi.json');
   let specContent = fs.readFileSync(specPath, 'utf8');
   const tokenUrl = getAuthTokenUrl();
   specContent = specContent.replace(/AUTH_TOKEN_URL/g, tokenUrl);
 
-  res.setHeader('Content-Type', 'application/json');
-  res.send(specContent);
+  try {
+    const doc = JSON.parse(specContent);
+    if (doc.info) {
+      if (doc.info.title) doc.info.title = req.__('SWAGGER_INFO_TITLE') || doc.info.title;
+      if (doc.info.description) doc.info.description = req.__('SWAGGER_INFO_DESC') || doc.info.description;
+    }
+
+    if (doc.paths) {
+      for (const [pathKey, pathObj] of Object.entries(doc.paths)) {
+        for (const [method, operation] of Object.entries(pathObj)) {
+          if (typeof operation !== 'object' || !operation) continue;
+          const opId = (method.toUpperCase() + '_' + pathKey.replace(/[^a-zA-Z0-9]/g, '_')).toUpperCase();
+          const summaryKey = `SWAGGER_${opId}_SUMMARY`;
+          const translatedSummary = req.__(summaryKey);
+          if (translatedSummary && translatedSummary !== summaryKey) {
+            operation.summary = translatedSummary;
+          }
+        }
+      }
+    }
+
+    res.setHeader('Content-Type', 'application/json');
+    return res.json(doc);
+  } catch (err) {
+    res.setHeader('Content-Type', 'application/json');
+    return res.send(specContent);
+  }
 });
 
 // Static assets & Vendor mappings

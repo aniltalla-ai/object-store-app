@@ -61,10 +61,24 @@
             }
           },
           "400": {
-            "description": "Missing instance parameter"
+            "description": "Missing instance parameter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseModel"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Unauthorized"
+            "description": "Localized error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseModel"
+                }
+              }
+            }
           }
         }
       }
@@ -98,10 +112,24 @@
             }
           },
           "400": {
-            "description": "Missing parameters"
+            "description": "Missing parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseModel"
+                }
+              }
+            }
           },
           "401": {
-            "description": "Unauthorized"
+            "description": "Localized error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseModel"
+                }
+              }
+            }
           },
           "403": {
             "description": "Security instance mismatch"
@@ -139,10 +167,24 @@
             }
           },
           "400": {
-            "description": "Missing location"
+            "description": "Missing location",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseModel"
+                }
+              }
+            }
           },
           "404": {
-            "description": "File not found"
+            "description": "File not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseModel"
+                }
+              }
+            }
           }
         }
       }
@@ -895,6 +937,16 @@
           "LinuxStyle",
           "Linux"
         ]
+      },
+      "ErrorResponseModel": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Localized error message",
+            "example": "Nicht autorisiert: Ungültige Tokensignatur oder Aussteller."
+          }
+        }
       }
     }
   }

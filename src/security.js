@@ -16,7 +16,7 @@ if (xsuaaServices.length === 0) {
 
 const xsuaaAuth = async (req, res, next) => {
   if (xsuaaServices.length === 0) {
-    return res.status(500).json({ error: "Server misconfigured: No XSUAA bindings found." });
+    return res.status(500).json({ error: req.__ ? req.__('UNAUTHORIZED_NO_XSUAA') : "Server misconfigured: No XSUAA bindings found." });
   }
 
   let securityContext = null;
@@ -31,7 +31,7 @@ const xsuaaAuth = async (req, res, next) => {
 
   if (!securityContext) {
     console.error("[AUTH FAILED] Token did not match any bound XSUAA service audiences.");
-    return res.status(401).json({ error: "Unauthorized: Invalid token signature or issuer." });
+    return res.status(401).json({ error: req.__ ? req.__('UNAUTHORIZED_INVALID_TOKEN') : "Unauthorized: Invalid token signature or issuer." });
   }
 
   try {
@@ -49,7 +49,7 @@ const xsuaaAuth = async (req, res, next) => {
 
     if (!objectStoreName) {
       return res.status(400).json({
-        error: 'No Object Store Instance attribute found. Ensure you are using a user token (not client credentials) and that the role template assigns this attribute.'
+        error: req.__ ? req.__('MISSING_OBJECT_STORE') : 'No Object Store Instance attribute found. Ensure you are using a user token (not client credentials) and that the role template assigns this attribute.'
       });
     }
 
@@ -65,7 +65,7 @@ const xsuaaAuth = async (req, res, next) => {
     next();
   } catch (error) {
     console.error("[AUTH FAILED] Error parsing token payload:", error.message);
-    return res.status(401).json({ error: "Unauthorized: Failed to parse token payload." });
+    return res.status(401).json({ error: req.__ ? req.__('TOKEN_PARSE_ERROR') : "Unauthorized: Failed to parse token payload." });
   }
 };
 

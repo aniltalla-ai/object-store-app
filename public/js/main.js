@@ -1,17 +1,25 @@
 window.onload = function () {
+  let currentLanguage = localStorage.getItem('appLanguage') || 'en';
+
   const ui = SwaggerUIBundle({
-    url: "./openapi.json",
+    url: `./openapi.json?lang=${currentLanguage}`,
     dom_id: '#swagger-ui',
     deepLinking: true,
     presets: [
       SwaggerUIBundle.presets.apis,
       SwaggerUIStandalonePreset
     ],
-    layout: "StandaloneLayout"
+    layout: "StandaloneLayout",
+    requestInterceptor: (req) => {
+      req.headers['Accept-Language'] = currentLanguage;
+      req.headers['sap-language'] = currentLanguage;
+      return req;
+    }
   });
   window.ui = ui;
 
   const documentElement = document.documentElement;
+  const languageSelect = document.getElementById('languageSelect');
   const themePresetSelect = document.getElementById('themePresetSelect');
   const themeStylesheet = document.getElementById('theme-stylesheet');
 
@@ -26,6 +34,19 @@ window.onload = function () {
 
   const savedThemeMode = localStorage.getItem('themeMode') || appDefault.mode;
   const savedThemePreset = localStorage.getItem('themePreset') || appDefault.theme;
+
+  if (languageSelect) {
+    languageSelect.value = currentLanguage;
+    languageSelect.addEventListener('change', (e) => {
+      currentLanguage = e.target.value;
+      localStorage.setItem('appLanguage', currentLanguage);
+      if (window.ui && window.ui.specActions) {
+        window.ui.specActions.updateUrl(`./openapi.json?lang=${currentLanguage}`);
+        window.ui.specActions.download();
+      }
+    });
+  }
+
   if (appDefault.mode !== savedThemeMode) {
     setThemeMode(savedThemeMode);
   }

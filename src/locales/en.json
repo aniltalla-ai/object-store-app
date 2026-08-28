@@ -1,0 +1,33 @@
+{
+  "UNAUTHORIZED_NO_XSUAA": "Server misconfigured: No XSUAA bindings found.",
+  "UNAUTHORIZED_INVALID_TOKEN": "Unauthorized: Invalid token signature or issuer.",
+  "MISSING_OBJECT_STORE": "No Object Store Instance attribute found. Ensure you are using a user token (not client credentials) and that the role template assigns this attribute.",
+  "TOKEN_PARSE_ERROR": "Unauthorized: Failed to parse token payload.",
+  "MISSING_SOURCE_DEST_PATHS": "Missing 'sourcePath' or 'destinationPath' parameters.",
+  "MISSING_DESTINATION_PATH": "Missing required destination/storagePath parameter.",
+  "INVALID_SOURCE_PATH": "Invalid 'sourcePath' parameter.",
+  "DIRECTORY_NOT_FOUND": "Directory not found.",
+  "FILE_NOT_FOUND": "File or object not found.",
+  "MISSING_FILE_NAME": "Missing file name or target path.",
+  "STORAGE_INIT_ERROR": "Storage adapter initialization error: {{message}}",
+
+  "SWAGGER_INFO_TITLE": "Object Store Services",
+  "SWAGGER_INFO_DESC": "REST API service for object storage (AWS S3, Azure Blob, GCP Storage) with multi-instance tenant scoping",
+
+  "SWAGGER_GET__STORAGE_LIST_SUMMARY": "List files and folders in object store",
+  "SWAGGER_POST__STORAGE_CREATEPATH_SUMMARY": "Create directory path in object store",
+  "SWAGGER_GET__STORAGE_DOWNLOAD_SUMMARY": "Download file from destination",
+  "SWAGGER_GET__STORAGE_DOWNLOADCHUNK_SUMMARY": "Get file chunk from destination",
+  "SWAGGER_POST__STORAGE_UPLOAD_SUMMARY": "Upload file synchronously to destination",
+  "SWAGGER_POST__STORAGE_UPLOADASYNC_SUMMARY": "Upload file asynchronously to destination",
+  "SWAGGER_POST__STORAGE_COPY_SUMMARY": "Copy file from source path to destination path",
+  "SWAGGER_POST__STORAGE_MOVE_SUMMARY": "Move file from source path to destination path",
+  "SWAGGER_DELETE__STORAGE_DELETE_SUMMARY": "Delete file from destination",
+  "SWAGGER_GET__STORAGE_WRITING_LIST_SUMMARY": "List pending files available for writing/appending",
+  "SWAGGER_GET__STORAGE_WRITING_READ_SUMMARY": "Get all or a portion of a writable file",
+  "SWAGGER_POST__STORAGE_WRITING_CREATE_SUMMARY": "Create a file session that can be appended to",
+  "SWAGGER_POST__STORAGE_WRITING_APPEND_SUMMARY": "Add chunk to existing writable file session",
+  "SWAGGER_POST__STORAGE_WRITING_CLOSE_SUMMARY": "Close writable file session and move to destination",
+  "SWAGGER_DELETE__STORAGE_WRITING_CANCEL_SUMMARY": "Cancel writing session and remove temporary chunks",
+  "SWAGGER_GET__STORAGE_WRITING_STATUS_SUMMARY": "View pending upload status"
+}
