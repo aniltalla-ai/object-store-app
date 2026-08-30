@@ -24,14 +24,14 @@ class RsaStrategy extends BaseStrategy {
         if (decoded.includes('-----BEGIN')) {
           keyStr = decoded;
         }
-      } catch (e) {}
+      } catch (e) { }
     }
     return keyStr.includes('-----BEGIN') ? keyStr : null;
   }
 
   isEnabled(config) {
     const pubKey = this.normalizeKey(config?.publicKey);
-    const privKey = this.normalizeKey(config?.privateKey || config?.privateKeyPem);
+    const privKey = this.normalizeKey(config?.privateKey);
     return Boolean(pubKey || privKey);
   }
 

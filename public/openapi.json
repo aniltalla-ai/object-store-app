@@ -25,12 +25,13 @@
         "summary": "Check encryption status and algorithm for a target destination",
         "parameters": [
           {
-            "name": "destination",
+            "name": "filename",
             "in": "query",
+            "required": false,
             "schema": {
               "type": "string"
             },
-            "description": "Destination name configured in SAP Destination Service (or pass via x-crypto-destination header)"
+            "description": "Optional relative path of a file to check its specific encryption status and algorithm"
           }
         ],
         "responses": {
@@ -44,8 +45,14 @@
               }
             }
           },
+          "400": {
+            "description": "Bad Request - No encryption destination configured"
+          },
           "401": {
             "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Internal Server Error - Failed to resolve encryption status"
           }
         }
       }
@@ -904,6 +911,21 @@
             "type": "string",
             "nullable": true,
             "description": "Configured encryption format (e.g. binary, armored)"
+          },
+          "filename": {
+            "type": "string",
+            "nullable": true,
+            "description": "Target file relative path if filename parameter was provided"
+          },
+          "fileIsEncrypted": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Indicates whether the specified file is encrypted"
+          },
+          "fileEncryptionAlgorithm": {
+            "type": "string",
+            "nullable": true,
+            "description": "Encryption algorithm detected for the specified file (e.g. aes, rsa, pgp)"
           }
         }
       },

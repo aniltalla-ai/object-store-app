@@ -37,14 +37,43 @@ class CryptoAdapter {
         format,
       };
 
-      const strategy = this.strategies[config.algorithm];
-      config.enabled = Boolean(strategy && strategy.isEnabled(config));
+      config.enabled = await this.isEnabled(config);
 
       return config;
     } catch (err) {
       console.warn(`[CRYPTO] Failed to resolve destination '${destinationName}': ${err.message}`);
       return null;
     }
+  }
+
+  async isEnabled(config) {
+    if (!config || !config.algorithm) return false;
+    const strategy = this.strategies[config.algorithm];
+    if (!strategy) return false;
+
+    if (typeof strategy.isEnabled === 'function' && !strategy.isEnabled(config)) {
+      return false;
+    }
+
+    try {
+      const testBuffer = Buffer.from('vos-key-validation-test');
+      const encrypted = await strategy.encrypt(testBuffer, config);
+      const decrypted = await strategy.decrypt(encrypted, config);
+      return Boolean(decrypted && decrypted.equals(testBuffer));
+    } catch (err) {
+      console.warn(`[CRYPTO:${config.algorithm}] Key validation failed for destination '${config.destinationName}': ${err.message}`);
+      return false;
+    }
+  }
+
+  detectEncryption(metadata = null) {
+    const isEncrypted = Boolean(metadata?.isencrypted === 'true' || metadata?.isEncrypted === 'true');
+    const algorithm = isEncrypted ? (metadata?.encryptionalgorithm || metadata?.encryptionAlgorithm || null) : null;
+
+    return {
+      isEncrypted,
+      algorithm,
+    };
   }
 
   async getConfig(destinationName) {
@@ -110,5 +139,7 @@ module.exports = {
   decrypt: (buffer, dest) => instance.decrypt(buffer, dest),
   isActive: (dest) => instance.isActive(dest),
   getConfig: (dest) => instance.getConfig(dest),
+  detectEncryption: (buffer, metadata) => instance.detectEncryption(buffer, metadata),
+  instance,
 };
 

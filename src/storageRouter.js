@@ -26,29 +26,50 @@ router.use(async (req, res, next) => {
 // GET /encryptionStatus -> 200 OK
 router.get('/encryptionStatus', async (req, res) => {
   try {
-    const dest = requestUtils.getParam(req, 'destination') || 
-                 requestUtils.getParam(req, 'cryptoDestination') || 
-                 req.cryptoDestination || null;
+    const dest = req.cryptoDestination || null;
 
-    if (!dest) {
-      return res.status(200).json({
-        destination: null,
-        enabled: false,
-        algorithm: null,
-        message: 'No encryption destination specified.'
-      });
+    const filename = requestUtils.getParam(req, 'filename') || null;
+
+    let responsePayload = {
+      destination: null,
+      enabled: false,
+      algorithm: null,
+      format: null,
+    };
+
+    if (dest) {
+      const config = await cryptoAdapter.getConfig(dest);
+      const enabled = Boolean(config && config.enabled);
+      const algorithm = enabled ? config.algorithm : (config?.algorithm || null);
+      responsePayload = {
+        destination: dest,
+        enabled,
+        algorithm,
+        format: config?.format || null,
+      };
+    } else {
+      return res.status(400).json({ error: 'No encryption destination configured.' });
     }
 
-    const config = await cryptoAdapter.getConfig(dest);
-    const enabled = Boolean(config && config.enabled);
-    const algorithm = enabled ? config.algorithm : (config?.algorithm || null);
+    if (filename) {
+      const targetPath = requestUtils.normalizeRelativePath(filename);
+      const provider = req.provider;
 
-    return res.status(200).json({
-      destination: dest,
-      enabled,
-      algorithm,
-      format: config?.format || null
-    });
+      let fileMetadata = {};
+      try {
+        if (provider && typeof provider.getMetadata === 'function') {
+          fileMetadata = await provider.getMetadata(targetPath);
+        }
+      } catch (e) { }
+
+      const fileStatus = cryptoAdapter.detectEncryption(fileMetadata);
+
+      responsePayload.filename = filename;
+      responsePayload.fileIsEncrypted = fileStatus.isEncrypted;
+      responsePayload.fileEncryptionAlgorithm = fileStatus.algorithm;
+    }
+
+    return res.status(200).json(responsePayload);
   } catch (err) {
     return res.status(500).json({ error: err.message || 'Failed to resolve encryption status.' });
   }
